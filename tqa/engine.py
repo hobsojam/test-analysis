@@ -5,11 +5,13 @@ from tqa.parsers.cobertura import parse_cobertura
 from tqa.parsers.stryker import parse_stryker
 from tqa.parsers.pit import parse_pit
 from tqa.parsers.mutmut import parse_mutmut
+from tqa.parsers.lcov import parse_lcov
 
 class AnalysisEngine:
     def run(
         self,
         coverage_path: Optional[str] = None,
+        lcov_path: Optional[str] = None,
         stryker_path: Optional[str] = None,
         pit_path: Optional[str] = None,
         mutmut_path: Optional[str] = None
@@ -21,6 +23,9 @@ class AnalysisEngine:
 
         if coverage_path and os.path.exists(coverage_path):
             parse_cobertura(coverage_path, report)
+
+        if lcov_path and os.path.exists(lcov_path):
+            parse_lcov(lcov_path, report)
 
         if stryker_path and os.path.exists(stryker_path):
             parse_stryker(stryker_path, report)

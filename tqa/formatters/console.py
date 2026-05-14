@@ -3,7 +3,7 @@ from rich.table import Table
 from tqa.models import ProjectReport
 
 def print_summary_table(report: ProjectReport):
-    console = Console()
+    console = Console(legacy_windows=False)
     
     table = Table(title="TQA - Test Quality Summary")
     table.add_column("File", style="cyan")
@@ -15,11 +15,11 @@ def print_summary_table(report: ProjectReport):
         cov = file_report.line_coverage * 100
         tsi = file_report.test_strength * 100
         
-        status = "✅ Healthy"
+        status = "[green]Healthy[/]"
         if tsi < 80:
-            status = "⚠️ Weak"
+            status = "[yellow]Weak[/]"
         if tsi < 50:
-            status = "❌ Blind"
+            status = "[red]Blind[/]"
             
         table.add_row(
             file_path,

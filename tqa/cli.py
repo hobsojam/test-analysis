@@ -12,16 +12,18 @@ def main():
 
 @main.command()
 @click.option("--coverage", "coverage_path", type=click.Path(), help="Path to Cobertura XML")
+@click.option("--lcov", "lcov_path", type=click.Path(), help="Path to lcov.info (Jest, Vitest, NYC)")
 @click.option("--stryker", "stryker_path", type=click.Path(), help="Path to Stryker JSON")
 @click.option("--pit", "pit_path", type=click.Path(), help="Path to PIT mutations.xml")
 @click.option("--mutmut", "mutmut_path", type=click.Path(), help="Path to mutmut junit.xml")
 @click.option("--format", type=click.Choice(["console", "github"]), default="console")
 @click.option("--fail-under", type=float, default=0.0, help="Fail if total TSI is below this threshold")
-def analyze(coverage_path, stryker_path, pit_path, mutmut_path, format, fail_under):
+def analyze(coverage_path, lcov_path, stryker_path, pit_path, mutmut_path, format, fail_under):
     """Analyze test quality by correlating reports."""
     engine = AnalysisEngine()
     report = engine.run(
         coverage_path=coverage_path,
+        lcov_path=lcov_path,
         stryker_path=stryker_path,
         pit_path=pit_path,
         mutmut_path=mutmut_path
