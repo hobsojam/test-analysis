@@ -46,10 +46,9 @@ jobs:
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         run: |
-          EXISTING=$(gh pr view ${{ github.event.number }} --json comments \
-            --jq '[.comments[] | select(.author.login == "github-actions" and (.body | startswith("# TQA Report Summary"))) | .url] | last // empty')
-          if [ -n "$EXISTING" ]; then
-            COMMENT_ID=$(basename "$EXISTING")
+          COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/${{ github.event.number }}/comments \
+            --jq '[.[] | select(.user.login == "github-actions" and (.body | startswith("# TQA Report Summary"))) | .id] | last // empty')
+          if [ -n "$COMMENT_ID" ]; then
             gh api repos/${{ github.repository }}/issues/comments/"$COMMENT_ID" \
               -X PATCH -f body="$(cat tqa-summary.md)"
           else
