@@ -22,7 +22,11 @@ class LineData(BaseModel):
 class FileReport(BaseModel):
     file_path: str
     lines: Dict[int, LineData] = Field(default_factory=dict)
-    
+
+    @property
+    def has_mutation_data(self) -> bool:
+        return any(bool(line.mutants) for line in self.lines.values())
+
     @property
     def line_coverage(self) -> float:
         if not self.lines:
@@ -47,6 +51,10 @@ class FileReport(BaseModel):
 
 class ProjectReport(BaseModel):
     files: Dict[str, FileReport] = Field(default_factory=dict)
+
+    @property
+    def has_mutation_data(self) -> bool:
+        return any(f.has_mutation_data for f in self.files.values())
 
     @property
     def total_test_strength(self) -> float:
