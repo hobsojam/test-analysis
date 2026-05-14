@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 from tqa.models import ProjectReport
 from tqa.parsers.cobertura import parse_cobertura
@@ -19,16 +20,16 @@ class AnalysisEngine:
         """
         Ingests all provided reports and returns the correlated ProjectReport.
         """
-        if coverage_path:
+        if coverage_path and os.path.exists(coverage_path):
             parse_cobertura(coverage_path, self.report)
             
-        if stryker_path:
+        if stryker_path and os.path.exists(stryker_path):
             parse_stryker(stryker_path, self.report)
             
-        if pit_path:
+        if pit_path and os.path.exists(pit_path):
             parse_pit(pit_path, self.report)
             
-        if mutmut_path:
+        if mutmut_path and os.path.exists(mutmut_path):
             parse_mutmut(mutmut_path, self.report)
             
         return self.report
