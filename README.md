@@ -121,7 +121,7 @@ Multiple flags can be combined — tqa merges coverage and mutation data by file
   if: github.event_name == 'pull_request'
   run: |
     COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/${{ github.event.number }}/comments \
-      --jq '[.[] | select(.user.login == "github-actions" and (.body | startswith("# TQA Report Summary"))) | .id] | last // empty')
+      --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("# TQA Report Summary"))) | .id] | last // empty')
     if [ -n "$COMMENT_ID" ]; then
       gh api repos/${{ github.repository }}/issues/comments/"$COMMENT_ID" \
         -X PATCH -f body="$(cat tqa-summary.md)"
