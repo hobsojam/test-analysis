@@ -1,0 +1,37 @@
+name: TQA Analysis
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install .
+
+      - name: Run TQA
+        run: |
+          # Replace these paths with your actual report locations
+          python -m tqa.cli analyze \
+            --coverage ./reports/coverage.xml \
+            --stryker ./reports/stryker-report.json \
+            --format github > tqa-summary.md
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        run: |
+          gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
