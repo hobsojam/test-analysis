@@ -7,12 +7,9 @@ from tqa.parsers.pit import parse_pit
 from tqa.parsers.mutmut import parse_mutmut
 
 class AnalysisEngine:
-    def __init__(self):
-        self.report = ProjectReport()
-
     def run(
-        self, 
-        coverage_path: Optional[str] = None, 
+        self,
+        coverage_path: Optional[str] = None,
         stryker_path: Optional[str] = None,
         pit_path: Optional[str] = None,
         mutmut_path: Optional[str] = None
@@ -20,19 +17,21 @@ class AnalysisEngine:
         """
         Ingests all provided reports and returns the correlated ProjectReport.
         """
+        report = ProjectReport()
+
         if coverage_path and os.path.exists(coverage_path):
-            parse_cobertura(coverage_path, self.report)
-            
+            parse_cobertura(coverage_path, report)
+
         if stryker_path and os.path.exists(stryker_path):
-            parse_stryker(stryker_path, self.report)
-            
+            parse_stryker(stryker_path, report)
+
         if pit_path and os.path.exists(pit_path):
-            parse_pit(pit_path, self.report)
-            
+            parse_pit(pit_path, report)
+
         if mutmut_path and os.path.exists(mutmut_path):
-            parse_mutmut(mutmut_path, self.report)
-            
-        return self.report
+            parse_mutmut(mutmut_path, report)
+
+        return report
 
     def get_critical_gaps(self, report: ProjectReport) -> List[dict]:
         """

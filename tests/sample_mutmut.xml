@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="mutmut" tests="2" failures="1" errors="0" skipped="0">
+  <testcase name="mutant #1 (file: main.py, line: 5)" status="run"/>
+  <testcase name="mutant #2 (file: main.py, line: 10)" status="run">
+    <failure message="survived"/>
+  </testcase>
+</testsuite>

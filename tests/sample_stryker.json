@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1",
+  "files": {
+    "src/auth.py": {
+      "language": "python",
+      "source": "def login():\n    return True",
+      "mutants": [
+        {
+          "id": "1",
+          "mutatorName": "BooleanLiteral",
+          "location": { "start": { "line": 2, "column": 12 }, "end": { "line": 2, "column": 16 } },
+          "status": "Survived"
+        },
+        {
+          "id": "2",
+          "mutatorName": "BooleanLiteral",
+          "location": { "start": { "line": 2, "column": 12 }, "end": { "line": 2, "column": 16 } },
+          "status": "Killed"
+        }
+      ]
+    }
+  }
+}
