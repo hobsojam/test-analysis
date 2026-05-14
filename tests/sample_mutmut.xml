@@ -1,7 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="mutmut" tests="2" failures="1" errors="0" skipped="0">
-  <testcase name="mutant #1 (file: main.py, line: 5)" status="run"/>
-  <testcase name="mutant #2 (file: main.py, line: 10)" status="run">
-    <failure message="survived"/>
-  </testcase>
-</testsuite>
+<?xml version="1.0" ?>
+<testsuites disabled="0" errors="0" failures="1" tests="2" time="0.0">
+  <testsuite disabled="0" errors="0" failures="1" name="mutmut" skipped="0" tests="2" time="0">
+    <testcase name="Mutant #1" file="main.py" line="5"/>
+    <testcase name="Mutant #2" file="main.py" line="10">
+      <failure type="failure" message="bad_survived">survived</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

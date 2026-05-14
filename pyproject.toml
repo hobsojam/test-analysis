@@ -34,5 +34,8 @@ tqa = "tqa.cli:main"
 paths_to_mutate = "tqa/"
 tests_dir = "tests/"
 
+[tool.coverage.run]
+source = ["tqa"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

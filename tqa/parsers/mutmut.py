@@ -5,42 +5,44 @@ from tqa.models import ProjectReport, FileReport, LineData, MutantData
 def parse_mutmut(xml_path: str, report: ProjectReport) -> ProjectReport:
     """
     Parses a mutmut JUnit XML report and updates the ProjectReport.
-    In mutmut's JUnit output:
-    - Passed test = Killed mutant
-    - Failed/Errored test = Survived mutant (or other error)
+
+    mutmut 2.x format: file and line are XML attributes on <testcase>.
+    Older format fallback: name="mutant #N (file: F, line: L)".
+    Killed = no <failure> element. Survived = <failure> present.
     """
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
     for testcase in root.xpath("//testcase"):
-        # mutmut encodes info in the name: "mutant #123 (file: path/to/file.py, line: 45)"
-        name = testcase.get("name")
-        if not name:
-            continue
-        match = re.search(r"mutant #(\d+) \(file: (.*), line: (\d+)\)", name)
-        
-        if not match:
-            continue
-            
-        mutant_id, file_path, line = match.groups()
-        line = int(line)
-        
-        # Determine status
+        file_path = testcase.get("file")
+        line_str = testcase.get("line")
+        mutant_id = testcase.get("name", "")
+
+        if not file_path or not line_str:
+            name = testcase.get("name")
+            if not name:
+                continue
+            match = re.search(r"mutant #(\d+) \(file: (.*), line: (\d+)\)", name, re.IGNORECASE)
+            if not match:
+                continue
+            mutant_id, file_path, line_str = match.groups()
+
+        line = int(line_str)
         status = "Killed"
         if testcase.xpath("./failure") or testcase.xpath("./error"):
             status = "Survived"
-        
+
         if file_path not in report.files:
             report.files[file_path] = FileReport(file_path=file_path)
-            
+
         file_report = report.files[file_path]
-        
+
         if line not in file_report.lines:
             file_report.lines[line] = LineData(line_number=line)
-            
+
         file_report.lines[line].mutants.append(
             MutantData(
-                id=mutant_id,
+                id=str(mutant_id),
                 status=status,
                 line=line,
                 description="mutmut mutation"

@@ -27,7 +27,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python -m pytest --cov=tqa --cov-report=xml:coverage.xml tests/
+          python -m pytest --cov --cov-report=xml:coverage.xml tests/
 
       - name: Run mutation tests
         run: mutmut run
@@ -35,13 +35,6 @@ jobs:
 
       - name: Export mutation results
         run: mutmut junitxml > mutmut.xml
-
-      - name: Debug reports
-        run: |
-          echo "=== mutmut.xml (first 20 lines) ==="
-          head -20 mutmut.xml || echo "mutmut.xml missing"
-          echo "=== coverage.xml file paths ==="
-          grep 'filename=' coverage.xml | head -10
 
       - name: Run TQA
         run: |
