@@ -1,4 +1,5 @@
 from tqa.models import ProjectReport
+from tqa.engine import AnalysisEngine
 from tqa.parsers.cobertura import parse_cobertura
 from tqa.parsers.stryker import parse_stryker
 from tqa.parsers.pit import parse_pit
@@ -55,6 +56,26 @@ def test_parse_mutmut():
     main_report = report.files["main.py"]
     assert main_report.lines[5].mutants[0].status == "Killed"
     assert main_report.lines[10].mutants[0].status == "Survived"
+
+def test_path_reconciliation():
+    report = ProjectReport()
+    # Coverage uses short path (pytest-cov strips package prefix)
+    parse_cobertura("tests/sample_cobertura.xml", report)
+    # Rename coverage entry to simulate short path: "src/auth.py" -> "auth.py"
+    report.files["auth.py"] = report.files.pop("src/auth.py")
+    report.files["auth.py"].file_path = "auth.py"
+    # Mutation data uses full path
+    parse_stryker("tests/sample_stryker.json", report)
+    # Now reconcile
+    engine = AnalysisEngine()
+    engine._reconcile_paths(report)
+    # Short path should be merged into long path and removed
+    assert "auth.py" not in report.files
+    assert "src/auth.py" in report.files
+    merged = report.files["src/auth.py"]
+    # Coverage + mutation data both present
+    assert merged.lines[1].is_covered is True
+    assert len(merged.lines[2].mutants) > 0
 
 def test_parse_lcov():
     report = ProjectReport()
