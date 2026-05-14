@@ -126,7 +126,8 @@ Multiple flags can be combined — tqa merges coverage and mutation data by file
       gh api repos/${{ github.repository }}/issues/comments/"$COMMENT_ID" \
         -X PATCH -f body="$(cat tqa-summary.md)"
     else
-      gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
+      gh api repos/${{ github.repository }}/issues/${{ github.event.number }}/comments \
+        -X POST -f body="$(cat tqa-summary.md)"
     fi
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
