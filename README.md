@@ -97,16 +97,18 @@ Multiple flags can be combined — tqa merges coverage and mutation data by file
 
 ## GitHub Actions integration
 
+### Single-job example (Python)
+
 ```yaml
 - name: Run tests with coverage
   run: python -m pytest --cov --cov-report=xml:coverage.xml tests/
 
 - name: Run mutation tests
   run: mutmut run
-  continue-on-error: true   # don't block CI on surviving mutants
+  continue-on-error: true   # mutmut exits non-zero when mutants survive
 
 - name: Export mutation results
-  run: mutmut junitxml > mutmut.xml
+  run: mutmut junitxml > mutmut.xml   # run even if the step above failed
 
 - name: Run TQA
   run: |
@@ -117,10 +119,59 @@ Multiple flags can be combined — tqa merges coverage and mutation data by file
 
 - name: Comment on PR
   if: github.event_name == 'pull_request'
-  run: gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
+  run: |
+    COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/${{ github.event.number }}/comments \
+      --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("# TQA Report Summary"))) | .id] | last // empty')
+    if [ -n "$COMMENT_ID" ]; then
+      gh api repos/${{ github.repository }}/issues/comments/"$COMMENT_ID" \
+        -X PATCH -f body="$(cat tqa-summary.md)"
+    else
+      gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
+    fi
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+The comment step updates the existing TQA comment in place rather than appending a new one on every push.
+
+### Multi-job example (JavaScript — tests and TQA in separate jobs)
+
+When coverage and mutation reports are produced in one job and consumed in another, upload them as an artifact and locate them with `find` rather than hardcoding the download path:
+
+```yaml
+jobs:
+  test:
+    steps:
+      - run: npx c8 --reporter=lcov node --test
+      - run: npx stryker run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            coverage/lcov.info
+            reports/mutation/mutation.json
+
+  tqa:
+    needs: test
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: reports
+          path: reports
+      - run: pip install tqa
+      - run: |
+          LCOV=$(find reports -name "lcov.info" | head -1)
+          STRYKER=$(find reports -name "mutation.json" | head -1)
+          tqa analyze \
+            ${LCOV:+--lcov "$LCOV"} \
+            ${STRYKER:+--stryker "$STRYKER"} \
+            --format github > tqa-summary.md
+      # ... comment step as above
+```
+
+Using `find` avoids depending on the exact directory structure that `download-artifact` produces.
 
 Use `--fail-under 80` on the `tqa analyze` line to enforce a minimum TSI quality gate.
 
@@ -142,6 +193,14 @@ Total Project Test Strength: 84.2%
 ```
 
 `N/A` in the TSI column means no mutation data was loaded for that file — coverage alone cannot measure test strength.
+
+**TSI status thresholds**
+
+| Status | TSI | Meaning |
+| :--- | :--- | :--- |
+| Healthy | ≥ 80% | Tests catch most mutations — good signal |
+| Weak | 50–79% | Tests run the code but miss many mutations |
+| Blind | < 50% | Tests cover lines but verify almost nothing |
 
 ### GitHub (`--format github`)
 
