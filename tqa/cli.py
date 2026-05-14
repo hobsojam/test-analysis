@@ -1,5 +1,6 @@
 import click
 import sys
+from rich.console import Console
 from tqa.engine import AnalysisEngine
 from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary, print_github_annotations
@@ -28,11 +29,12 @@ def analyze(coverage_path, stryker_path, pit_path, mutmut_path, format, fail_und
     
     if not report.files:
         if format == "console":
-            click.echo("\n[bold yellow]⚠️ No quality data found.[/]")
-            click.echo("To see results, please ensure you have generated coverage or mutation reports.")
-            click.echo("\n[bold]Suggested Setup:[/]")
-            click.echo("1. Coverage: Use `pytest-cov --cov-report=xml` (Python) or `nyc report --reporter=cobertura` (JS)")
-            click.echo("2. Mutation: Use `stryker run` (JS), `pitest` (Java), or `mutmut run` (Python)")
+            console = Console()
+            console.print("\n[bold yellow]⚠️ No quality data found.[/]")
+            console.print("To see results, please ensure you have generated coverage or mutation reports.")
+            console.print("\n[bold]Suggested Setup:[/]")
+            console.print("1. Coverage: Use `pytest-cov --cov-report=xml` (Python) or `nyc report --reporter=cobertura` (JS)")
+            console.print("2. Mutation: Use `stryker run` (JS), `pitest` (Java), or `mutmut run` (Python)")
         elif format == "github":
             click.echo("# 🛡️ TQA: Quality Unknown")
             click.echo("\nNo coverage or mutation reports were detected. Quality metrics cannot be calculated.")

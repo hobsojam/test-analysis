@@ -15,6 +15,8 @@ def parse_mutmut(xml_path: str, report: ProjectReport) -> ProjectReport:
     for testcase in root.xpath("//testcase"):
         # mutmut encodes info in the name: "mutant #123 (file: path/to/file.py, line: 45)"
         name = testcase.get("name")
+        if not name:
+            continue
         match = re.search(r"mutant #(\d+) \(file: (.*), line: (\d+)\)", name)
         
         if not match:

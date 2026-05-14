@@ -23,14 +23,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install .
+          pip install .[dev]
+
+      - name: Run tests with coverage
+        run: |
+          python -m pytest --cov=tqa --cov-report=xml:coverage.xml tests/
 
       - name: Run TQA
         run: |
-          # Replace these paths with your actual report locations
+          # Analyze the generated coverage report
           python -m tqa.cli analyze \
-            --coverage ./reports/coverage.xml \
-            --stryker ./reports/stryker-report.json \
+            --coverage coverage.xml \
             --format github > tqa-summary.md
 
       - name: Comment on PR

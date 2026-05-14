@@ -16,6 +16,7 @@ These rules are foundational mandates for working in this repository. Follow the
 
 ## Git
 
+- **NEVER commit directly to `main`.** Always create a feature branch for any changes.
 - **Never force-push to `main`.**
 - **Never commit secrets, tokens, or credentials** of any kind.
 - The `.gitignore` must exclude `.env` and `*.local` files.
