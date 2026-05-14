@@ -1,6 +1,9 @@
 from tqa.models import ProjectReport
 from tqa.parsers.cobertura import parse_cobertura
 from tqa.parsers.stryker import parse_stryker
+from tqa.parsers.pit import parse_pit
+from tqa.parsers.mutmut import parse_mutmut
+from tqa.parsers.lcov import parse_lcov
 
 def test_parse_cobertura():
     report = ProjectReport()
@@ -34,9 +37,6 @@ def test_correlation():
     assert auth_report.line_coverage == 0.5
     assert auth_report.test_strength == 1.0 
 
-from tqa.parsers.pit import parse_pit
-from tqa.parsers.mutmut import parse_mutmut
-
 def test_parse_pit():
     report = ProjectReport()
     parse_pit("tests/sample_pit.xml", report)
@@ -50,8 +50,21 @@ def test_parse_pit():
 def test_parse_mutmut():
     report = ProjectReport()
     parse_mutmut("tests/sample_mutmut.xml", report)
-    
+
     assert "main.py" in report.files
     main_report = report.files["main.py"]
     assert main_report.lines[5].mutants[0].status == "Killed"
     assert main_report.lines[10].mutants[0].status == "Survived"
+
+def test_parse_lcov():
+    report = ProjectReport()
+    parse_lcov("tests/sample_lcov.info", report)
+
+    assert "src/auth.js" in report.files
+    auth_report = report.files["src/auth.js"]
+    assert auth_report.lines[1].is_covered is True
+    assert auth_report.lines[2].is_covered is False
+    assert auth_report.lines[3].is_covered is True
+
+    assert "src/utils.js" in report.files
+    assert report.files["src/utils.js"].line_coverage == 1.0
