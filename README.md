@@ -18,6 +18,25 @@
 - **Rich**: For beautiful, colorized terminal output.
 - **Pytest**: For ensuring the analyzer itself is rock-solid.
 
+## 🧪 Testing
+
+We use `pytest` for unit testing. The tests verify that the parsers correctly handle various report formats and that the correlation engine accurately calculates the Test Strength Index.
+
+### Running Tests
+
+1.  **Install dev dependencies**:
+    ```bash
+    pip install .[dev]
+    ```
+
+2.  **Run the test suite**:
+    ```bash
+    python -m pytest tests/
+    ```
+
+### Adding New Test Cases
+Place sample report files in `tests/` and add corresponding test functions in `tests/test_tqa.py` to verify parser behavior on new edge cases.
+
 ## 📈 Implementation Plan
 
 1.  **Phase 1: Foundation**: Project initialization and core Pydantic models to represent the "Unified Test Quality Report."
