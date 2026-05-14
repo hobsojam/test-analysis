@@ -30,10 +30,11 @@ jobs:
           python -m pytest --cov=tqa --cov-report=xml:coverage.xml tests/
 
       - name: Run mutation tests
-        run: |
-          mutmut run
-          mutmut junitxml > mutmut.xml
+        run: mutmut run
         continue-on-error: true
+
+      - name: Export mutation results
+        run: mutmut junitxml > mutmut.xml
 
       - name: Run TQA
         run: |
