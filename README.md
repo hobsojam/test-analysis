@@ -1,73 +1,155 @@
-# tqa - Test Quality Analyzer
+# tqa — Test Quality Analyzer
 
-`tqa` is a language-agnostic CLI tool designed to bridge the gap between **Code Coverage** and **Mutation Testing**. It provides a "Test Strength Index" (TSI) by correlating which lines of code are executed by tests versus which lines actually have effective assertions.
+`tqa` correlates code coverage with mutation testing to produce a **Test Strength Index (TSI)**: the percentage of covered lines where mutants are actually killed. A line with coverage but no killed mutants means your tests execute the code but don't verify its behaviour.
 
-## 🚀 Key Features
-
-- **Multi-Ecosystem Support**: Built-in parsers for Java (PIT), Python (mutmut), and JavaScript/TypeScript (Stryker).
-- **Unified Coverage**: Supports Cobertura XML as the universal coverage format.
-- **Blind Spot Detection**: Automatically identifies "False Positives"—lines with 100% coverage but 0% mutation kill rate.
-- **CI/CD Native**: Optimized for GitHub Actions with automated Markdown summaries and inline PR annotations.
-- **Actionable Insights**: Detailed reports showing exactly which lines need stronger assertions.
-
-## 🛠️ Technologies
-
-- **Python 3.10+**: Chosen for its rich ecosystem, ease of CI integration, and excellent XML/JSON handling.
-- **Pydantic**: For robust, type-safe data modeling of report schemas.
-- **Click**: For a professional, intuitive command-line interface.
-- **Rich**: For beautiful, colorized terminal output.
-- **Pytest**: For ensuring the analyzer itself is rock-solid.
-
-## 🧪 Testing
-
-We use `pytest` for unit testing. The tests verify that the parsers correctly handle various report formats and that the correlation engine accurately calculates the Test Strength Index.
-
-### Running Tests
-
-1.  **Install dev dependencies**:
-    ```bash
-    pip install .[dev]
-    ```
-
-2.  **Run the test suite**:
-    ```bash
-    python -m pytest tests/
-    ```
-
-### Adding New Test Cases
-Place sample report files in `tests/` and add corresponding test functions in `tests/test_tqa.py` to verify parser behavior on new edge cases.
-
-## 📈 Implementation Plan
-
-1.  **Phase 1: Foundation**: Project initialization and core Pydantic models to represent the "Unified Test Quality Report."
-2.  **Phase 2: Data Ingestion**: Implementation of parsers for Cobertura (coverage), Stryker (JS/TS), PIT (Java), and mutmut (Python).
-3.  **Phase 4: Output & Integration**: Development of the console table formatter and the GitHub Actions Markdown/Annotation generator.
-
-## 📖 Usage Guide (Preview)
-
-Once installed, you can analyze your project by pointing `tqa` to your report files:
+## Installation
 
 ```bash
-# Analyze a JavaScript project using Stryker and Cobertura
-tqa analyze \
-  --coverage ./coverage/cobertura-coverage.xml \
-  --mutation ./reports/stryker-report.json \
-  --format github
-
-# Analyze a Python project using mutmut and pytest-cov
-tqa analyze \
-  --coverage ./coverage.xml \
-  --mutation ./mutmut-junit.xml \
-  --format console
+pip install tqa
 ```
 
-### GitHub Actions Integration
+## Quick start
 
-Add `tqa` to your workflow to get automated PR comments:
+```bash
+tqa analyze --coverage coverage.xml --mutmut mutmut.xml
+```
+
+## Generating the input reports
+
+### Python (pytest-cov + mutmut)
+
+```bash
+# Coverage — outputs coverage.xml in the current directory
+python -m pytest --cov --cov-report=xml:coverage.xml tests/
+
+# Mutation — outputs .mutmut-cache in the current directory
+mutmut run
+mutmut junitxml > mutmut.xml   # export to mutmut.xml
+```
+
+```bash
+tqa analyze --coverage coverage.xml --mutmut mutmut.xml
+```
+
+### JavaScript / TypeScript (Jest/Vitest + Stryker)
+
+```bash
+# Coverage — Jest writes coverage/lcov.info by default
+jest --coverage
+
+# Mutation — Stryker writes reports/mutation/mutation.json by default
+stryker run
+```
+
+```bash
+tqa analyze --lcov coverage/lcov.info --stryker reports/mutation/mutation.json
+```
+
+If you use NYC instead of Jest:
+
+```bash
+nyc report --reporter=lcov   # writes coverage/lcov.info
+```
+
+### Java (JaCoCo + PIT)
+
+```bash
+# Coverage + mutation — both produced by a single Maven build
+mvn test jacoco:report org.pitest:pitest-maven:mutationCoverage
+# Coverage: target/site/jacoco/jacoco.xml
+# Mutations: target/pit-reports/<timestamp>/mutations.xml
+```
+
+```bash
+tqa analyze \
+  --coverage target/site/jacoco/jacoco.xml \
+  --pit target/pit-reports/*/mutations.xml
+```
+
+## Report file locations at a glance
+
+| Tool | Default output path |
+| :--- | :--- |
+| pytest-cov | `coverage.xml` (configure with `--cov-report=xml:<path>`) |
+| mutmut | `.mutmut-cache` (DB); export with `mutmut junitxml > mutmut.xml` |
+| Jest | `coverage/lcov.info` |
+| Vitest | `coverage/lcov.info` (requires `@vitest/coverage-v8`) |
+| NYC | `coverage/lcov.info` |
+| Stryker | `reports/mutation/mutation.json` |
+| JaCoCo | `target/site/jacoco/jacoco.xml` |
+| PIT | `target/pit-reports/<timestamp>/mutations.xml` |
+
+## CLI reference
+
+```
+tqa analyze [OPTIONS]
+
+  --coverage PATH     Cobertura XML (pytest-cov, JaCoCo)
+  --lcov PATH         lcov.info (Jest, Vitest, NYC)
+  --stryker PATH      Stryker JSON report
+  --mutmut PATH       mutmut JUnit XML (mutmut junitxml)
+  --pit PATH          PIT mutations.xml
+  --format [console|github]  Output format (default: console)
+  --fail-under FLOAT  Exit 1 if TSI is below this percentage
+```
+
+Multiple flags can be combined — tqa merges coverage and mutation data by file path.
+
+## GitHub Actions integration
 
 ```yaml
+- name: Run tests with coverage
+  run: python -m pytest --cov --cov-report=xml:coverage.xml tests/
+
+- name: Run mutation tests
+  run: mutmut run
+  continue-on-error: true   # don't block CI on surviving mutants
+
+- name: Export mutation results
+  run: mutmut junitxml > mutmut.xml
+
 - name: Run TQA
   run: |
-    pip install tqa
-    tqa analyze --coverage coverage.xml --mutation report.json --format github > tqa-summary.md
+    tqa analyze \
+      --coverage coverage.xml \
+      --mutmut mutmut.xml \
+      --format github > tqa-summary.md
+
+- name: Comment on PR
+  if: github.event_name == 'pull_request'
+  run: gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Use `--fail-under 80` on the `tqa analyze` line to enforce a minimum TSI quality gate.
+
+## Output
+
+### Console (default)
+
+```
+          TQA - Test Quality Summary
+┌─────────────┬──────────┬─────────────────────┬─────────┐
+│ File        │ Coverage │ Test Strength (TSI)  │ Status  │
+├─────────────┼──────────┼─────────────────────┼─────────┤
+│ models.py   │   95.0%  │              88.5%   │ Healthy │
+│ engine.py   │   80.0%  │              62.0%   │ Weak    │
+│ index.js    │   39.2%  │                N/A   │ No data │
+└─────────────┴──────────┴─────────────────────┴─────────┘
+
+Total Project Test Strength: 84.2%
+```
+
+`N/A` in the TSI column means no mutation data was loaded for that file — coverage alone cannot measure test strength.
+
+### GitHub (`--format github`)
+
+Produces a Markdown table suitable for a PR comment, plus `::warning` annotations for lines with 100% coverage but 0% mutants killed.
+
+## Development
+
+```bash
+pip install .[dev]
+python -m pytest tests/
 ```
