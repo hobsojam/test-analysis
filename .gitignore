@@ -43,8 +43,6 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
-tests/sample_*.xml
-tests/sample_*.json
 
 # Environments
 .env
