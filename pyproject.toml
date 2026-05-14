@@ -23,6 +23,7 @@ dev = [
     "pytest>=7.0.0",
     "pip-audit>=2.0.0",
     "black>=22.0.0",
+    "mutmut>=2.4.0",
 ]
 
 [project.scripts]
