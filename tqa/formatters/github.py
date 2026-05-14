@@ -1,4 +1,5 @@
 import os
+import sys
 from tqa.models import ProjectReport
 from tqa.engine import AnalysisEngine
 
@@ -81,4 +82,4 @@ def print_github_annotations(report: ProjectReport):
     engine = AnalysisEngine()
     gaps = engine.get_critical_gaps(report)
     for gap in gaps:
-        print(f"::warning file={gap['file']},line={gap['line']}::Critical Gap: Line is covered but all {gap['survived']} mutants survived. Stronger assertions needed.")
+        print(f"::warning file={gap['file']},line={gap['line']}::Critical Gap: Line is covered but all {gap['survived']} mutants survived. Stronger assertions needed.", file=sys.stderr)

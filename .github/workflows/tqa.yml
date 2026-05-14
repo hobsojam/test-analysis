@@ -46,6 +46,13 @@ jobs:
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         run: |
-          gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
+          COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/${{ github.event.number }}/comments \
+            --jq '[.[] | select(.user.login == "github-actions" and (.body | startswith("# TQA Report Summary"))) | .id] | last // empty')
+          if [ -n "$COMMENT_ID" ]; then
+            gh api repos/${{ github.repository }}/issues/comments/"$COMMENT_ID" \
+              -X PATCH -f body="$(cat tqa-summary.md)"
+          else
+            gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
