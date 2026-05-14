@@ -36,6 +36,13 @@ jobs:
       - name: Export mutation results
         run: mutmut junitxml > mutmut.xml
 
+      - name: Debug reports
+        run: |
+          echo "=== mutmut.xml (first 20 lines) ==="
+          head -20 mutmut.xml || echo "mutmut.xml missing"
+          echo "=== coverage.xml file paths ==="
+          grep 'filename=' coverage.xml | head -10
+
       - name: Run TQA
         run: |
           python -m tqa.cli analyze \
