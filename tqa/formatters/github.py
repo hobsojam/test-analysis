@@ -78,7 +78,7 @@ def generate_markdown_summary(report: ProjectReport) -> str:
 
     return "\n".join(lines)
 
-def print_github_annotations(report: ProjectReport):
+def print_github_annotations(report: ProjectReport) -> None:
     engine = AnalysisEngine()
     gaps = engine.get_critical_gaps(report)
     for gap in gaps:

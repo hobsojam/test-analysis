@@ -6,7 +6,7 @@ from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary, print_github_annotations
 
 @click.group()
-def main():
+def main() -> None:
     """TQA - Test Quality Analyzer"""
     pass
 
@@ -18,7 +18,7 @@ def main():
 @click.option("--mutmut", "mutmut_path", type=click.Path(), help="Path to mutmut junit.xml")
 @click.option("--format", type=click.Choice(["console", "github"]), default="console")
 @click.option("--fail-under", type=float, default=0.0, help="Fail if total TSI is below this threshold")
-def analyze(coverage_path, lcov_path, stryker_path, pit_path, mutmut_path, format, fail_under):
+def analyze(coverage_path: str, lcov_path: str, stryker_path: str, pit_path: str, mutmut_path: str, format: str, fail_under: float) -> None:
     """Analyze test quality by correlating reports."""
     engine = AnalysisEngine()
     report = engine.run(

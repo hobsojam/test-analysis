@@ -2,7 +2,7 @@ from rich.console import Console
 from rich.table import Table
 from tqa.models import ProjectReport
 
-def print_summary_table(report: ProjectReport):
+def print_summary_table(report: ProjectReport) -> None:
     console = Console(legacy_windows=False)
 
     table = Table(title="TQA - Test Quality Summary")
