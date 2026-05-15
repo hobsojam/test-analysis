@@ -1,13 +1,13 @@
 import lxml.etree as ET
 import re
-from tqa.models import ProjectReport, FileReport, LineData, MutantData
+from tqa.models import ComponentReport, FileReport, LineData, MutantData
 from tqa.parsers.base import Parser
 from tqa.parsers.registry import register_parser
 
 
 @register_parser("mutmut")
 class MutmutParser(Parser):
-    def parse(self, path: str, report: ProjectReport) -> ProjectReport:
+    def parse(self, path: str, report: ComponentReport) -> ComponentReport:
         """
         Parses a mutmut JUnit XML report and updates the ProjectReport.
 
@@ -57,5 +57,5 @@ class MutmutParser(Parser):
         return report
 
 
-def parse_mutmut(xml_path: str, report: ProjectReport) -> ProjectReport:
+def parse_mutmut(xml_path: str, report: ComponentReport) -> ComponentReport:
     return MutmutParser().parse(xml_path, report)

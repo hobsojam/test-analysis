@@ -1,11 +1,11 @@
-from tqa.models import ProjectReport, FileReport, LineData
+from tqa.models import ComponentReport, FileReport, LineData
 from tqa.parsers.base import Parser
 from tqa.parsers.registry import register_parser
 
 
 @register_parser("lcov")
 class LcovParser(Parser):
-    def parse(self, path: str, report: ProjectReport) -> ProjectReport:
+    def parse(self, path: str, report: ComponentReport) -> ComponentReport:
         current_file = None
         with open(path, "r", encoding="utf-8") as f:
             for raw in f:
@@ -27,5 +27,5 @@ class LcovParser(Parser):
         return report
 
 
-def parse_lcov(lcov_path: str, report: ProjectReport) -> ProjectReport:
+def parse_lcov(lcov_path: str, report: ComponentReport) -> ComponentReport:
     return LcovParser().parse(lcov_path, report)

@@ -1,0 +1,6 @@
+# tqa.toml — test quality config for this project
+# Run: tqa analyze --config tqa.toml --format github
+
+[components.tqa]
+cobertura = "coverage.xml"
+mutmut = "mutmut.xml"

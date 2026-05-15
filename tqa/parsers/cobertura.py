@@ -1,12 +1,12 @@
 import lxml.etree as ET
-from tqa.models import ProjectReport, FileReport, LineData
+from tqa.models import ComponentReport, FileReport, LineData
 from tqa.parsers.base import Parser
 from tqa.parsers.registry import register_parser
 
 
 @register_parser("cobertura")
 class CoberturaParser(Parser):
-    def parse(self, path: str, report: ProjectReport) -> ProjectReport:
+    def parse(self, path: str, report: ComponentReport) -> ComponentReport:
         tree = ET.parse(path)
         root = tree.getroot()
         for class_node in root.xpath("//class"):
@@ -23,5 +23,5 @@ class CoberturaParser(Parser):
         return report
 
 
-def parse_cobertura(xml_path: str, report: ProjectReport) -> ProjectReport:
+def parse_cobertura(xml_path: str, report: ComponentReport) -> ComponentReport:
     return CoberturaParser().parse(xml_path, report)
