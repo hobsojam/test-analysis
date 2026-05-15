@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install .[dev]
+          pip install -e .[dev]
           pip install ruff pip-audit
 
       - name: Lint with Ruff
