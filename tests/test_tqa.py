@@ -173,8 +173,7 @@ def test_path_reconciliation():
     report.files["auth.py"] = report.files.pop("src/auth.py")
     report.files["auth.py"].file_path = "auth.py"
     parse_stryker("tests/sample_stryker.json", report)
-    engine = AnalysisEngine()
-    engine._reconcile_paths(report)
+    report.reconcile_paths()
     assert "auth.py" not in report.files
     assert "src/auth.py" in report.files
     merged = report.files["src/auth.py"]
@@ -187,8 +186,7 @@ def test_path_reconciliation_skips_ambiguous():
     report.files["__init__.py"] = FileReport(file_path="__init__.py")
     report.files["pkg/__init__.py"] = FileReport(file_path="pkg/__init__.py")
     report.files["sub/__init__.py"] = FileReport(file_path="sub/__init__.py")
-    engine = AnalysisEngine()
-    engine._reconcile_paths(report)
+    report.reconcile_paths()
     assert "__init__.py" in report.files
     assert "pkg/__init__.py" in report.files
     assert "sub/__init__.py" in report.files
