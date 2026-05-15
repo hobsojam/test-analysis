@@ -73,7 +73,7 @@ tqa analyze \
 | pytest-cov | `coverage.xml` (configure with `--cov-report=xml:<path>`) |
 | mutmut | `.mutmut-cache` (DB); export with `mutmut junitxml > mutmut.xml` |
 | Jest | `coverage/lcov.info` |
-| Vitest | `coverage/lcov.info` (requires `@vitest/coverage-v8`) |
+| Vitest | `coverage/lcov.info` (requires `@vitest/coverage-v8` and `reporter: ['lcov']` in config) |
 | NYC | `coverage/lcov.info` |
 | Stryker | `reports/mutation/mutation.json` |
 | JaCoCo | `target/site/jacoco/jacoco.xml` |
@@ -84,6 +84,7 @@ tqa analyze \
 ```
 tqa analyze [OPTIONS]
 
+  --config PATH       tqa.toml config file (multi-technology projects)
   --coverage PATH     Cobertura XML (pytest-cov, JaCoCo)
   --lcov PATH         lcov.info (Jest, Vitest, NYC)
   --stryker PATH      Stryker JSON report
@@ -94,6 +95,141 @@ tqa analyze [OPTIONS]
 ```
 
 Multiple flags can be combined — tqa merges coverage and mutation data by file path.
+
+## Multi-technology projects
+
+When a project has more than one technology stack (e.g. a Node.js server and a Svelte/React frontend), use a `tqa.toml` config file to define named components. Each component is analyzed independently and gets its own section in the report.
+
+### tqa.toml format
+
+```toml
+[components.server]
+lcov    = "reports/server/lcov.info"
+stryker = "reports/server/mutation.json"
+
+[components.client]
+lcov    = "reports/client/lcov.info"
+stryker = "reports/client/mutation.json"
+```
+
+Then invoke tqa with:
+
+```bash
+tqa analyze --config tqa.toml --format github
+```
+
+The flat flags (`--lcov`, `--coverage`, etc.) remain available as a shorthand for single-stack projects and produce the same output as before. Use `--config` whenever you need separate per-component metrics.
+
+### Enabling coverage for Vitest
+
+Vitest does not produce coverage by default. You need the `@vitest/coverage-v8` package and a coverage config:
+
+```bash
+npm install --save-dev @vitest/coverage-v8
+```
+
+In `vite.config.js` (or `vitest.config.js`):
+
+```js
+export default {
+  test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov'],
+      reportsDirectory: 'reports/coverage',
+    },
+  },
+}
+```
+
+Run tests with coverage enabled:
+
+```bash
+npx vitest run --coverage
+# writes: reports/coverage/lcov.info
+```
+
+Without this, the client component will show no coverage data and TSI will be N/A for all client files.
+
+### GitHub Actions — multi-technology example
+
+Three things must be true for both stacks to appear in the report:
+
+1. **The `tqa` job must `needs` both upstream jobs** — otherwise it may run before the client build finishes.
+2. **Both artifact sets must be downloaded** — one `download-artifact` step per stack.
+3. **A `tqa.toml` must be committed** to the repo pointing at the downloaded paths.
+
+```yaml
+jobs:
+  server-test:
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx c8 --reporter=lcov node --test
+        working-directory: server
+      - run: npx stryker run
+        working-directory: server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-reports
+          path: |
+            server/coverage/lcov.info
+            server/reports/mutation/mutation.json
+
+  client-test:
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install
+        working-directory: client
+      - run: npx vitest run --coverage      # requires @vitest/coverage-v8
+        working-directory: client
+      - run: npx stryker run
+        working-directory: client
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-reports
+          path: |
+            client/reports/coverage/lcov.info
+            client/reports/mutation/mutation.json
+
+  tqa:
+    needs: [server-test, client-test]      # wait for BOTH jobs
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4          # needed to read tqa.toml
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-reports
+          path: reports/server
+      - uses: actions/download-artifact@v4  # download client reports too
+        with:
+          name: client-reports
+          path: reports/client
+      - run: pip install tqa
+      - run: tqa analyze --config tqa.toml --format github > tqa-summary.md
+      # ... comment step as in the single-job example
+```
+
+With a `tqa.toml` in the repo root:
+
+```toml
+[components.server]
+lcov    = "reports/server/coverage/lcov.info"
+stryker = "reports/server/reports/mutation/mutation.json"
+
+[components.client]
+lcov    = "reports/client/reports/coverage/lcov.info"
+stryker = "reports/client/reports/mutation/mutation.json"
+```
+
+> **Note on artifact download paths:** `actions/download-artifact` places files under the `path` you specify, preserving the directory structure from the upload. If you uploaded `server/coverage/lcov.info`, it lands at `reports/server/server/coverage/lcov.info`. Use `find` to locate files rather than hardcoding paths if the structure is uncertain:
+>
+> ```bash
+> SERVER_LCOV=$(find reports/server -name "lcov.info" | head -1)
+> CLIENT_LCOV=$(find reports/client -name "lcov.info" | head -1)
+> ```
+>
+> Or restructure uploads to strip the leading directory by setting `working-directory` on the upload step.
 
 ## GitHub Actions integration
 
