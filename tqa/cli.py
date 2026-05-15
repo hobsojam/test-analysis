@@ -21,13 +21,13 @@ def main() -> None:
 def analyze(coverage_path: str, lcov_path: str, stryker_path: str, pit_path: str, mutmut_path: str, format: str, fail_under: float) -> None:
     """Analyze test quality by correlating reports."""
     engine = AnalysisEngine()
-    report = engine.run(
-        coverage_path=coverage_path,
-        lcov_path=lcov_path,
-        stryker_path=stryker_path,
-        pit_path=pit_path,
-        mutmut_path=mutmut_path
-    )
+    report = engine.run({
+        "cobertura": coverage_path,
+        "lcov": lcov_path,
+        "stryker": stryker_path,
+        "pit": pit_path,
+        "mutmut": mutmut_path,
+    })
     
     if not report.files:
         if format == "console":
