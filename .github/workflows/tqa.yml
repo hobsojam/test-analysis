@@ -70,9 +70,27 @@ jobs:
           script: |
             const fs = require('fs');
             const summary = fs.readFileSync('tqa-summary.md', 'utf8');
-            github.rest.issues.createComment({
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: summary
             });
+            const existing = comments.findLast(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.startsWith('# TQA Report Summary')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: summary,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary,
+              });
+            }
