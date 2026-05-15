@@ -1,5 +1,8 @@
 import sys
-import tomllib
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]
 import click
 from rich.console import Console
 from tqa.engine import AnalysisEngine
