@@ -18,8 +18,8 @@ def test_mutant_data_description_defaults_to_none():
     assert m.description is None
 
 def test_line_data_is_covered_defaults_to_false():
-    l = LineData(line_number=1)
-    assert l.is_covered is False
+    line_data = LineData(line_number=1)
+    assert line_data.is_covered is False
 
 
 # --- Model properties ---
@@ -286,3 +286,37 @@ def test_cli_analyze_no_reports():
     runner = CliRunner()
     result = runner.invoke(main, ["analyze"])
     assert result.exit_code == 0
+
+
+# --- Input validation: empty/missing coverage data ---
+
+def test_parse_cobertura_empty_xml():
+    report = ProjectReport()
+    parse_cobertura("tests/sample_cobertura_empty.xml", report)
+    assert report.files == {}
+
+def test_cli_warns_when_coverage_xml_has_no_files():
+    # Simulates what happens when coverage.py runs but collects no data:
+    # the XML is written but contains no <class> elements.
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "analyze",
+        "--coverage", "tests/sample_cobertura_empty.xml",
+        "--format", "github",
+    ])
+    assert result.exit_code == 0
+    assert "No coverage or mutation reports were detected" in result.output
+
+def test_cli_warns_when_coverage_xml_has_no_files_with_mutation_data():
+    # When mutation data is present but coverage XML is empty, TSI cannot
+    # be computed (no covered lines). The report should flag this rather
+    # than silently showing 0% quality.
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "analyze",
+        "--coverage", "tests/sample_cobertura_empty.xml",
+        "--mutmut", "tests/sample_mutmut.xml",
+        "--format", "github",
+    ])
+    assert result.exit_code == 0
+    assert "coverage" in result.output.lower()

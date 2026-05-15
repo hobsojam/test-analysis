@@ -1,5 +1,4 @@
 import lxml.etree as ET
-from typing import Dict
 from tqa.models import ProjectReport, FileReport, LineData
 
 def parse_cobertura(xml_path: str, report: ProjectReport) -> ProjectReport:
