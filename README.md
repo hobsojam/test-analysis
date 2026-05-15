@@ -142,10 +142,19 @@ export default {
 }
 ```
 
-Run tests with coverage enabled:
+Add a separate script for coverage so plain `npm test` stays fast in local development:
+
+```json
+"scripts": {
+  "test": "vitest run",
+  "test:coverage": "vitest run --coverage"
+}
+```
+
+Run coverage:
 
 ```bash
-npx vitest run --coverage
+npm run test:coverage
 # writes: reports/coverage/lcov.info
 ```
 
@@ -153,11 +162,12 @@ Without this, the client component will show no coverage data and TSI will be N/
 
 ### GitHub Actions — multi-technology example
 
-Three things must be true for both stacks to appear in the report:
+Four things must be true for both stacks to appear in the report:
 
-1. **The `tqa` job must `needs` both upstream jobs** — otherwise it may run before the client build finishes.
+1. **The `tqa` job must `needs` both upstream jobs** — otherwise it may run before one stack finishes.
 2. **Both artifact sets must be downloaded** — one `download-artifact` step per stack.
 3. **A `tqa.toml` must be committed** to the repo pointing at the downloaded paths.
+4. **Artifact uploads must flatten the directory structure** — `actions/download-artifact` preserves the path relative to the repo root, so uploading `server/coverage/lcov.info` and downloading to `reports/server` lands at `reports/server/server/coverage/lcov.info`. Add a collect step to copy reports to a flat staging directory before uploading.
 
 ```yaml
 jobs:
@@ -168,28 +178,34 @@ jobs:
         working-directory: server
       - run: npx stryker run
         working-directory: server
+      - name: Collect server reports
+        run: |
+          mkdir -p artifacts
+          cp server/coverage/lcov.info artifacts/lcov.info
+          cp server/reports/mutation/mutation.json artifacts/mutation.json
       - uses: actions/upload-artifact@v4
         with:
           name: server-reports
-          path: |
-            server/coverage/lcov.info
-            server/reports/mutation/mutation.json
+          path: artifacts/
 
   client-test:
     steps:
       - uses: actions/checkout@v4
       - run: npm install
         working-directory: client
-      - run: npx vitest run --coverage      # requires @vitest/coverage-v8
+      - run: npm run test:coverage           # see Vitest section above
         working-directory: client
       - run: npx stryker run
         working-directory: client
+      - name: Collect client reports
+        run: |
+          mkdir -p artifacts
+          cp client/reports/coverage/lcov.info artifacts/lcov.info
+          cp client/reports/mutation/mutation.json artifacts/mutation.json
       - uses: actions/upload-artifact@v4
         with:
           name: client-reports
-          path: |
-            client/reports/coverage/lcov.info
-            client/reports/mutation/mutation.json
+          path: artifacts/
 
   tqa:
     needs: [server-test, client-test]      # wait for BOTH jobs
@@ -201,7 +217,7 @@ jobs:
         with:
           name: server-reports
           path: reports/server
-      - uses: actions/download-artifact@v4  # download client reports too
+      - uses: actions/download-artifact@v4
         with:
           name: client-reports
           path: reports/client
@@ -210,26 +226,17 @@ jobs:
       # ... comment step as in the single-job example
 ```
 
-With a `tqa.toml` in the repo root:
+With a `tqa.toml` in the repo root (paths match the flattened artifact structure above):
 
 ```toml
 [components.server]
-lcov    = "reports/server/coverage/lcov.info"
-stryker = "reports/server/reports/mutation/mutation.json"
+lcov    = "reports/server/lcov.info"
+stryker = "reports/server/mutation.json"
 
 [components.client]
-lcov    = "reports/client/reports/coverage/lcov.info"
-stryker = "reports/client/reports/mutation/mutation.json"
+lcov    = "reports/client/lcov.info"
+stryker = "reports/client/mutation.json"
 ```
-
-> **Note on artifact download paths:** `actions/download-artifact` places files under the `path` you specify, preserving the directory structure from the upload. If you uploaded `server/coverage/lcov.info`, it lands at `reports/server/server/coverage/lcov.info`. Use `find` to locate files rather than hardcoding paths if the structure is uncertain:
->
-> ```bash
-> SERVER_LCOV=$(find reports/server -name "lcov.info" | head -1)
-> CLIENT_LCOV=$(find reports/client -name "lcov.info" | head -1)
-> ```
->
-> Or restructure uploads to strip the leading directory by setting `working-directory` on the upload step.
 
 ## GitHub Actions integration
 
