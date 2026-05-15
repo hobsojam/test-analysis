@@ -1,4 +1,4 @@
-from typing import Dict, List, Type
+from typing import Callable, Dict, List, Type
 from tqa.parsers.base import Parser
 
 
@@ -22,7 +22,7 @@ class ParserRegistry:
 registry = ParserRegistry()
 
 
-def register_parser(name: str):
+def register_parser(name: str) -> Callable[[Type[Parser]], Type[Parser]]:
     def decorator(cls: Type[Parser]) -> Type[Parser]:
         registry.register(name, cls)
         return cls
