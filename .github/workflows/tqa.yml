@@ -39,6 +39,15 @@ jobs:
         run: |
           pytest tests/ --cov=tqa --cov-report=xml:coverage.xml
 
+      - name: Verify coverage data was collected
+        run: |
+          python -c "
+          import lxml.etree as ET
+          classes = ET.parse('coverage.xml').getroot().xpath('//class')
+          assert classes, 'coverage.xml has no file entries — coverage collected no data (check editable install)'
+          print(f'coverage.xml OK: {len(classes)} file(s) measured')
+          "
+
       - name: Run mutation tests
         run: mutmut run
         continue-on-error: true
