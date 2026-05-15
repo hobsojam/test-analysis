@@ -4,11 +4,13 @@ from tqa.models import ProjectReport, FileReport, LineData, MutantData
 from tqa.engine import AnalysisEngine
 from tqa.formatters.github import generate_markdown_summary
 from tqa.formatters.console import print_summary_table
-from tqa.parsers.cobertura import parse_cobertura
-from tqa.parsers.stryker import parse_stryker
-from tqa.parsers.pit import parse_pit
-from tqa.parsers.mutmut import parse_mutmut
-from tqa.parsers.lcov import parse_lcov
+from tqa.parsers.cobertura import parse_cobertura, CoberturaParser
+from tqa.parsers.stryker import parse_stryker, StrykerParser
+from tqa.parsers.pit import parse_pit, PitParser
+from tqa.parsers.mutmut import parse_mutmut, MutmutParser
+from tqa.parsers.lcov import parse_lcov, LcovParser
+from tqa.parsers.registry import registry
+from tqa.parsers.base import Parser
 
 
 # --- Model defaults ---
@@ -320,3 +322,50 @@ def test_cli_warns_when_coverage_xml_has_no_files_with_mutation_data():
     ])
     assert result.exit_code == 0
     assert "coverage" in result.output.lower()
+
+
+# --- Parser registry ---
+
+def test_registry_contains_all_parsers():
+    for key in ("cobertura", "stryker", "pit", "mutmut", "lcov"):
+        assert key in registry
+
+def test_registry_returns_correct_types():
+    assert isinstance(registry.get("cobertura"), CoberturaParser)
+    assert isinstance(registry.get("stryker"), StrykerParser)
+    assert isinstance(registry.get("pit"), PitParser)
+    assert isinstance(registry.get("mutmut"), MutmutParser)
+    assert isinstance(registry.get("lcov"), LcovParser)
+
+def test_registry_parsers_implement_base():
+    for name in registry.names():
+        assert isinstance(registry.get(name), Parser)
+
+def test_registry_get_returns_fresh_instance():
+    p1 = registry.get("cobertura")
+    p2 = registry.get("cobertura")
+    assert p1 is not p2
+
+def test_engine_run_accepts_inputs_dict():
+    engine = AnalysisEngine()
+    report = engine.run({"cobertura": "tests/sample_cobertura.xml"})
+    assert "src/auth.py" in report.files
+
+def test_engine_run_ignores_unknown_parser():
+    engine = AnalysisEngine()
+    report = engine.run({"unknown_format": "tests/sample_cobertura.xml"})
+    assert report.files == {}
+
+def test_engine_run_ignores_none_paths():
+    engine = AnalysisEngine()
+    report = engine.run({"cobertura": None, "stryker": None})
+    assert report.files == {}
+
+def test_engine_run_uses_multiple_parsers():
+    engine = AnalysisEngine()
+    report = engine.run({
+        "cobertura": "tests/sample_cobertura.xml",
+        "stryker": "tests/sample_stryker.json",
+    })
+    assert "src/auth.py" in report.files
+    assert report.files["src/auth.py"].has_mutation_data
