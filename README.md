@@ -103,6 +103,14 @@ Multiple flags can be combined — tqa merges coverage and mutation data by file
 - name: Run tests with coverage
   run: python -m pytest --cov --cov-report=xml:coverage.xml tests/
 
+- name: Verify coverage data was collected
+  run: |
+    python -c "
+    import xml.etree.ElementTree as ET
+    assert ET.parse('coverage.xml').findall('.//class'), \
+      'coverage.xml has no file entries — coverage collected no data'
+    "
+
 - name: Run mutation tests
   run: mutmut run
   continue-on-error: true   # mutmut exits non-zero when mutants survive
@@ -210,6 +218,6 @@ Produces a Markdown table suitable for a PR comment, plus `::warning` annotation
 ## Development
 
 ```bash
-pip install .[dev]
+pip install -e .[dev]   # editable install required for coverage to trace local source files
 python -m pytest tests/
 ```
