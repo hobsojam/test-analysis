@@ -1,5 +1,35 @@
+import os
+import sys
 from tqa.models import ProjectReport
 from tqa.engine import AnalysisEngine
+
+def _detect_language(report: ProjectReport) -> str:
+    extensions = [os.path.splitext(f)[1] for f in report.files]
+    if any(e in (".js", ".ts", ".jsx", ".tsx") for e in extensions):
+        return "js"
+    if any(e == ".java" for e in extensions):
+        return "java"
+    return "python"
+
+def _mutation_tip(report: ProjectReport) -> str:
+    lang = _detect_language(report)
+    if lang == "js":
+        return (
+            "> **Tip:** TSI requires a mutation report alongside coverage.\n"
+            "> Run [Stryker](https://stryker-mutator.io): `stryker run`"
+            " and add `--stryker reports/mutation/mutation.json` to the `tqa analyze` command."
+        )
+    if lang == "java":
+        return (
+            "> **Tip:** TSI requires a mutation report alongside coverage.\n"
+            "> Run [PIT](https://pitest.org): `mvn test-compile pitest:mutationCoverage`"
+            " and add `--pit target/pit-reports/mutations.xml` to the `tqa analyze` command."
+        )
+    return (
+        "> **Tip:** TSI requires a mutation report alongside coverage.\n"
+        "> Run [mutmut](https://mutmut.readthedocs.io): `mutmut run && mutmut junitxml > mutmut.xml`"
+        " and add `--mutmut mutmut.xml` to the `tqa analyze` command."
+    )
 
 def generate_markdown_summary(report: ProjectReport) -> str:
     lines = [
@@ -34,8 +64,7 @@ def generate_markdown_summary(report: ProjectReport) -> str:
     else:
         lines.append("**Total Project Test Strength: N/A**")
         lines.append("")
-        lines.append("> **Tip:** TSI requires a mutation report alongside coverage.")
-        lines.append("> For this project, run [Stryker](https://stryker-mutator.io) and add `--stryker reports/mutation/mutation.json` to the `tqa analyze` command.")
+        lines.append(_mutation_tip(report))
 
     # Add Critical Gaps section
     engine = AnalysisEngine()
@@ -53,4 +82,4 @@ def print_github_annotations(report: ProjectReport):
     engine = AnalysisEngine()
     gaps = engine.get_critical_gaps(report)
     for gap in gaps:
-        print(f"::warning file={gap['file']},line={gap['line']}::Critical Gap: Line is covered but all {gap['survived']} mutants survived. Stronger assertions needed.")
+        print(f"::warning file={gap['file']},line={gap['line']}::Critical Gap: Line is covered but all {gap['survived']} mutants survived. Stronger assertions needed.", file=sys.stderr)

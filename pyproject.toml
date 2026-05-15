@@ -24,8 +24,18 @@ dev = [
     "pytest-cov>=4.0.0",
     "pip-audit>=2.0.0",
     "black>=22.0.0",
-    "mutmut>=2.4.0",
+    "mutmut>=2.4.0,<3.0.0",
 ]
 
 [project.scripts]
 tqa = "tqa.cli:main"
+
+[tool.mutmut]
+paths_to_mutate = "tqa/"
+tests_dir = "tests/"
+
+[tool.coverage.run]
+source = ["tqa"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

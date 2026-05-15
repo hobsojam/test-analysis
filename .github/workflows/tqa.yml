@@ -39,10 +39,18 @@ jobs:
         run: |
           pytest tests/ --cov=tqa --cov-report=xml:coverage.xml
 
+      - name: Run mutation tests
+        run: mutmut run
+        continue-on-error: true
+
+      - name: Export mutation results
+        run: mutmut junitxml > mutmut.xml
+
       - name: Analyze with TQA
         run: |
           python -m tqa.cli analyze \
             --coverage coverage.xml \
+            --mutmut mutmut.xml \
             --format github > tqa-summary.md
 
       - name: Comment on PR
