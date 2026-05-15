@@ -1,19 +1,17 @@
 from rich.console import Console
 from rich.table import Table
-from tqa.models import ProjectReport
+from tqa.models import ProjectReport, ComponentReport
 
-def print_summary_table(report: ProjectReport) -> None:
-    console = Console(legacy_windows=False)
 
-    table = Table(title="TQA - Test Quality Summary")
+def _render_component_table(console: Console, component: ComponentReport, title: str) -> None:
+    table = Table(title=title)
     table.add_column("File", style="cyan")
     table.add_column("Coverage", justify="right")
     table.add_column("Test Strength (TSI)", justify="right")
     table.add_column("Status", justify="center")
 
-    for file_path, file_report in report.files.items():
+    for file_path, file_report in component.files.items():
         cov = file_report.line_coverage * 100
-
         if file_report.has_mutation_data:
             tsi = file_report.test_strength * 100
             status = "[green]Healthy[/]"
@@ -25,16 +23,33 @@ def print_summary_table(report: ProjectReport) -> None:
         else:
             tsi_str = "N/A"
             status = "[dim]No mutants[/]"
-
         table.add_row(file_path, f"{cov:.1f}%", tsi_str, status)
 
     console.print(table)
 
-    if report.has_mutation_data:
+
+def print_summary_table(report: ProjectReport) -> None:
+    console = Console(legacy_windows=False)
+    multi = len(report.components) > 1 or (
+        len(report.components) == 1 and "default" not in report.components
+    )
+
+    for comp_name, component in report.components.items():
+        display = comp_name.replace("-", " ").replace("_", " ").title()
+        title = f"TQA - {display}" if multi else "TQA - Test Quality Summary"
+        _render_component_table(console, component, title)
+
+        if component.has_mutation_data:
+            label = f"{display} Test Strength" if multi else "Total Project Test Strength"
+            console.print(f"\n[bold]{label}:[/] [green]{component.total_test_strength * 100:.1f}%[/]")
+        else:
+            label = f"{display} Test Strength" if multi else "Total Project Test Strength"
+            console.print(f"\n[bold]{label}:[/] [dim]N/A — no mutation data[/]")
+            if not multi:
+                console.print("\n[yellow]Tip:[/] TSI requires a mutation report. Add one with:")
+                console.print("  JS:     [bold]stryker run[/] → [bold]--stryker reports/mutation/mutation.json[/]")
+                console.print("  Python: [bold]mutmut run[/]  → [bold]--mutmut mutmut.xml[/]")
+                console.print("  Java:   [bold]mvn pitest:mutationCoverage[/] → [bold]--pit mutations.xml[/]")
+
+    if multi and report.has_mutation_data:
         console.print(f"\n[bold]Total Project Test Strength:[/] [green]{report.total_test_strength * 100:.1f}%[/]")
-    else:
-        console.print("\n[bold]Total Project Test Strength:[/] [dim]N/A — no mutation data[/]")
-        console.print("\n[yellow]Tip:[/] TSI requires a mutation report. Add one with:")
-        console.print("  JS:     [bold]stryker run[/] → [bold]--stryker reports/mutation/mutation.json[/]")
-        console.print("  Python: [bold]mutmut run[/]  → [bold]--mutmut mutmut.xml[/]")
-        console.print("  Java:   [bold]mvn pitest:mutationCoverage[/] → [bold]--pit mutations.xml[/]")

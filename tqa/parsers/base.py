@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from tqa.models import ProjectReport
+from tqa.models import ComponentReport
 
 
 class Parser(ABC):
     @abstractmethod
-    def parse(self, path: str, report: ProjectReport) -> ProjectReport:
+    def parse(self, path: str, report: ComponentReport) -> ComponentReport:
         ...

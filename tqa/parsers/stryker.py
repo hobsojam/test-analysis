@@ -1,12 +1,12 @@
 import json
-from tqa.models import ProjectReport, FileReport, LineData, MutantData
+from tqa.models import ComponentReport, FileReport, LineData, MutantData
 from tqa.parsers.base import Parser
 from tqa.parsers.registry import register_parser
 
 
 @register_parser("stryker")
 class StrykerParser(Parser):
-    def parse(self, path: str, report: ProjectReport) -> ProjectReport:
+    def parse(self, path: str, report: ComponentReport) -> ComponentReport:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         for file_path, file_data in data.get("files", {}).items():
@@ -28,5 +28,5 @@ class StrykerParser(Parser):
         return report
 
 
-def parse_stryker(json_path: str, report: ProjectReport) -> ProjectReport:
+def parse_stryker(json_path: str, report: ComponentReport) -> ComponentReport:
     return StrykerParser().parse(json_path, report)

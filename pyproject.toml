@@ -7,7 +7,7 @@ name = "tqa"
 version = "0.1.0"
 description = "Test Quality Analyzer - Correlate coverage and mutation testing"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Gemini CLI" }
 ]

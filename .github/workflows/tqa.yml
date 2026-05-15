@@ -62,8 +62,7 @@ jobs:
       - name: Analyze with TQA
         run: |
           python -m tqa.cli analyze \
-            --coverage coverage.xml \
-            --mutmut mutmut.xml \
+            --config tqa.toml \
             --format github > tqa-summary.md
 
       - name: Comment on PR

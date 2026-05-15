@@ -1,11 +1,13 @@
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
+
 class MutantData(BaseModel):
     id: str
-    status: str  # Killed, Survived, NoCoverage, etc.
+    status: str
     line: int
     description: Optional[str] = None
+
 
 class LineData(BaseModel):
     line_number: int
@@ -18,6 +20,7 @@ class LineData(BaseModel):
             return 1.0
         killed = sum(1 for m in self.mutants if m.status.lower() == "killed")
         return killed / len(self.mutants)
+
 
 class FileReport(BaseModel):
     file_path: str
@@ -36,20 +39,16 @@ class FileReport(BaseModel):
 
     @property
     def test_strength(self) -> float:
-        """
-        Calculates the Test Strength Index (TSI) for the file.
-        Only considers lines that are actually covered.
-        """
+        """Calculates the Test Strength Index (TSI). Only considers covered lines."""
         covered_lines = [line for line in self.lines.values() if line.is_covered]
         if not covered_lines:
             return 0.0
-        
-        # Average mutation score across covered lines
-        # If a line has no mutants, we treat it as 1.0 (no weakness found)
         scores = [line.mutation_score for line in covered_lines]
         return sum(scores) / len(scores)
 
-class ProjectReport(BaseModel):
+
+class ComponentReport(BaseModel):
+    """Parsed data for a single technology stack within the project."""
     files: Dict[str, FileReport] = Field(default_factory=dict)
 
     @property
@@ -98,3 +97,23 @@ class ProjectReport(BaseModel):
 
         for path in to_delete:
             del self.files[path]
+
+
+class ProjectReport(BaseModel):
+    """Top-level report aggregating one or more ComponentReports."""
+    components: Dict[str, ComponentReport] = Field(default_factory=dict)
+
+    @property
+    def has_mutation_data(self) -> bool:
+        return any(c.has_mutation_data for c in self.components.values())
+
+    @property
+    def total_test_strength(self) -> float:
+        if not self.components:
+            return 0.0
+        total_files = sum(len(c.files) for c in self.components.values())
+        if total_files == 0:
+            return 0.0
+        return sum(
+            c.total_test_strength * len(c.files) for c in self.components.values()
+        ) / total_files
