@@ -31,7 +31,7 @@ class FileReport(BaseModel):
     def line_coverage(self) -> float:
         if not self.lines:
             return 0.0
-        covered = sum(1 for l in self.lines.values() if l.is_covered)
+        covered = sum(1 for line in self.lines.values() if line.is_covered)
         return covered / len(self.lines)
 
     @property
@@ -40,13 +40,13 @@ class FileReport(BaseModel):
         Calculates the Test Strength Index (TSI) for the file.
         Only considers lines that are actually covered.
         """
-        covered_lines = [l for l in self.lines.values() if l.is_covered]
+        covered_lines = [line for line in self.lines.values() if line.is_covered]
         if not covered_lines:
             return 0.0
         
         # Average mutation score across covered lines
         # If a line has no mutants, we treat it as 1.0 (no weakness found)
-        scores = [l.mutation_score for l in covered_lines]
+        scores = [line.mutation_score for line in covered_lines]
         return sum(scores) / len(scores)
 
 class ProjectReport(BaseModel):

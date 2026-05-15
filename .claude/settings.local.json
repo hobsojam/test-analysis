@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(Start-Service *)",
+      "Bash(git remote *)",
+      "Bash(python *)",
+      "Bash(gh pr *)",
+      "Bash(pip install *)",
+      "Bash(tqa --help)",
+      "Bash(npm install *)",
+      "PowerShell(gh run *)",
+      "Bash(gh api *)",
+      "Bash(git checkout *)",
+      "Bash(mutmut run *)",
+      "PowerShell(cd C:\\\\Users\\\\ch8jw\\\\dev\\\\test-analysis; $env:PYTHONUTF8=1; python -m mutmut run 2>&1 | Select-Object -Last 8)",
+      "PowerShell(python --version)",
+      "Bash(gh run *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

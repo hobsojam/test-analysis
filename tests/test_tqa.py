@@ -18,8 +18,8 @@ def test_mutant_data_description_defaults_to_none():
     assert m.description is None
 
 def test_line_data_is_covered_defaults_to_false():
-    l = LineData(line_number=1)
-    assert l.is_covered is False
+    line_data = LineData(line_number=1)
+    assert line_data.is_covered is False
 
 
 # --- Model properties ---
