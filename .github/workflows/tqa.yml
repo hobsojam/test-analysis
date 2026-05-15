@@ -1,4 +1,4 @@
-name: TQA Analysis
+name: CI/CD Pipeline
 
 on:
   pull_request:
@@ -11,34 +11,51 @@ permissions:
   pull-requests: write
 
 jobs:
-  analyze:
+  quality-and-security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install .[dev]
+          pip install ruff pip-audit
 
-      - name: Run tests with coverage
+      - name: Lint with Ruff
         run: |
-          python -m pytest --cov=tqa --cov-report=xml:coverage.xml tests/
+          ruff check .
 
-      - name: Run TQA
+      - name: Security audit with pip-audit
         run: |
-          # Analyze the generated coverage report
+          pip-audit
+
+      - name: Run unit/integration tests
+        run: |
+          pytest tests/ --cov=tqa --cov-report=xml:coverage.xml
+
+      - name: Analyze with TQA
+        run: |
           python -m tqa.cli analyze \
             --coverage coverage.xml \
             --format github > tqa-summary.md
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        run: |
-          gh pr comment ${{ github.event.number }} --body-file tqa-summary.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('tqa-summary.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
