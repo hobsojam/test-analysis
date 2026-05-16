@@ -272,7 +272,7 @@ stryker = "reports/client/mutation.json"
   if: github.event_name == 'pull_request'
   run: |
     COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/${{ github.event.number }}/comments \
-      --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("# TQA Report Summary"))) | .id] | last // empty')
+      --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## TQA Report Summary"))) | .id] | last // empty')
     if [ -n "$COMMENT_ID" ]; then
       gh api repos/${{ github.repository }}/issues/comments/"$COMMENT_ID" \
         -X PATCH -f body="$(cat tqa-summary.md)"
@@ -356,7 +356,27 @@ Total Project Test Strength: 84.2%
 
 ### GitHub (`--format github`)
 
-Produces a Markdown table suitable for a PR comment, plus `::warning` annotations for lines with 100% coverage but 0% mutants killed.
+Produces a Markdown report suitable for a PR comment or a GitHub Actions job summary, plus `::warning` annotations for lines with 100% coverage but 0% mutants killed.
+
+The report structure is:
+- **Headline metric** (Total Project Test Strength) at the top
+- Per-file breakdown in a collapsible `<details>` block
+- Status column uses emoji: ✅ Healthy / 🟡 Weak / 🔴 Blind
+- Critical gaps table (if any) at the bottom
+
+#### Writing to the job summary
+
+Pipe the output to `$GITHUB_STEP_SUMMARY` to make the report visible in the Actions UI on every run, including pushes to `main` where there is no PR to comment on:
+
+```yaml
+- run: tqa analyze --config tqa.toml --format github > tqa-summary.md
+- run: cat tqa-summary.md >> $GITHUB_STEP_SUMMARY
+- name: Comment on PR
+  if: github.event_name == 'pull_request'
+  # ... comment step as below
+```
+
+The two outputs are independent — write to both, or either one alone.
 
 ## Development
 
