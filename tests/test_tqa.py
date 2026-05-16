@@ -266,20 +266,20 @@ def test_github_formatter_multi_component_shows_headers():
     report.components["backend"] = _make_component(killed=4, survived=1, covered=True)
     report.components["frontend"] = _make_component(killed=2, survived=2, covered=True)
     md = generate_markdown_summary(report)
-    assert "## Backend" in md
-    assert "## Frontend" in md
+    assert "### Backend" in md
+    assert "### Frontend" in md
     assert "Total Project Test Strength" in md
 
 def test_github_formatter_single_named_component_shows_header():
     report = ProjectReport()
     report.components["backend"] = _make_component(killed=4, survived=1, covered=True)
     md = generate_markdown_summary(report)
-    assert "## Backend" in md
+    assert "### Backend" in md
 
 def test_github_formatter_default_component_no_header():
     report = _make_report(killed=4, survived=1, covered=True)
     md = generate_markdown_summary(report)
-    assert "## " not in md
+    assert "### " not in md
 
 
 # --- Formatter: console ---

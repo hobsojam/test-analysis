@@ -34,6 +34,14 @@ def _mutation_tip(component: ComponentReport) -> str:
     )
 
 
+def _status_emoji(tsi: float) -> str:
+    if tsi >= 80:
+        return "✅ Healthy"
+    if tsi >= 50:
+        return "🟡 Weak"
+    return "🔴 Blind"
+
+
 def _component_table(component: ComponentReport) -> list[str]:
     rows = [
         "| File | Coverage | Test Strength (TSI) | Status |",
@@ -44,7 +52,7 @@ def _component_table(component: ComponentReport) -> list[str]:
         if file_report.has_mutation_data:
             tsi = file_report.test_strength * 100
             tsi_str = f"{tsi:.1f}%"
-            status = "Healthy" if tsi >= 80 else ("Weak" if tsi >= 50 else "Blind")
+            status = _status_emoji(tsi)
         else:
             tsi_str = "N/A"
             status = "—"
@@ -57,20 +65,22 @@ def _comp_display_name(name: str) -> str:
 
 
 def generate_markdown_summary(report: ProjectReport) -> str:
-    lines = ["# TQA Report Summary", ""]
+    lines = ["## TQA Report Summary", ""]
     # Show per-component headers when there are multiple components, or when
     # a single component has an explicit name (i.e. came from a config file).
     multi = len(report.components) > 1 or (
         len(report.components) == 1 and "default" not in report.components
     )
 
+    # Headline metrics first
+    if multi and report.has_mutation_data:
+        lines.append(f"**Total Project Test Strength: {report.total_test_strength * 100:.1f}%**")
+        lines.append("")
+
     for comp_name, component in report.components.items():
         if multi:
-            lines.append(f"## {_comp_display_name(comp_name)}")
+            lines.append(f"### {_comp_display_name(comp_name)}")
             lines.append("")
-
-        lines.extend(_component_table(component))
-        lines.append("")
 
         if component.has_mutation_data:
             label = "Test Strength" if multi else "Total Project Test Strength"
@@ -82,19 +92,23 @@ def generate_markdown_summary(report: ProjectReport) -> str:
             lines.append(_mutation_tip(component))
 
         lines.append("")
-
-    if multi and report.has_mutation_data:
-        lines.append(f"**Total Project Test Strength: {report.total_test_strength * 100:.1f}%**")
+        lines.append("<details>")
+        lines.append("<summary>Per-file breakdown</summary>")
+        lines.append("")
+        lines.extend(_component_table(component))
+        lines.append("")
+        lines.append("</details>")
         lines.append("")
 
     engine = AnalysisEngine()
     gaps = engine.get_critical_gaps(report)
     if gaps:
-        lines.append("\n## Critical Gaps (covered but 0% killed)")
+        lines.append("## Critical Gaps (covered but 0% killed)")
         lines.append("| File | Line | Survived Mutants |")
         lines.append("| :--- | :---: | :---: |")
         for gap in gaps[:10]:
             lines.append(f"| `{gap['file']}` | {gap['line']} | {gap['survived']} |")
+        lines.append("")
 
     return "\n".join(lines)
 
