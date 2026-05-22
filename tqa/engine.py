@@ -22,18 +22,50 @@ class AnalysisEngine:
                 report.components[comp_name] = component
         return report
 
-    def get_critical_gaps(self, report: ProjectReport) -> List[dict]:
-        """Identifies lines with coverage but 0% mutation kill rate."""
-        gaps = []
-        for component in report.components.values():
+    def get_surviving_mutants(self, report: ProjectReport) -> List[dict]:
+        """Return structured findings for lines with unkilled mutants."""
+        findings = []
+        for component_name, component in report.components.items():
             for file_path, file_report in component.files.items():
                 for line_num, line_data in file_report.lines.items():
-                    if line_data.is_covered and line_data.mutants:
-                        killed = sum(1 for m in line_data.mutants if m.status.lower() == "killed")
-                        if killed == 0:
-                            gaps.append({
-                                "file": file_path,
-                                "line": line_num,
-                                "survived": len(line_data.mutants),
-                            })
+                    if not line_data.mutants:
+                        continue
+                    killed = sum(
+                        1 for m in line_data.mutants
+                        if m.status.lower() == "killed"
+                    )
+                    survived = len(line_data.mutants) - killed
+                    if survived == 0:
+                        continue
+                    findings.append({
+                        "component": component_name,
+                        "file": file_path,
+                        "line": line_num,
+                        "covered": line_data.is_covered,
+                        "killed": killed,
+                        "survived": survived,
+                        "total": len(line_data.mutants),
+                        "all_survived": killed == 0,
+                        "mutants": [
+                            {
+                                "id": mutant.id,
+                                "status": mutant.status,
+                                "description": mutant.description,
+                            }
+                            for mutant in line_data.mutants
+                            if mutant.status.lower() != "killed"
+                        ],
+                    })
+        return findings
+
+    def get_critical_gaps(self, report: ProjectReport) -> List[dict]:
+        """Identifies covered lines with mutation data but 0% mutation kill rate."""
+        gaps = []
+        for finding in self.get_surviving_mutants(report):
+            if finding["covered"] and finding["all_survived"]:
+                gaps.append({
+                    "file": finding["file"],
+                    "line": finding["line"],
+                    "survived": finding["survived"],
+                })
         return gaps
