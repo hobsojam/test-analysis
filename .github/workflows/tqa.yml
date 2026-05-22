@@ -12,13 +12,15 @@ permissions:
 
 jobs:
   prevent-build-artifacts-merge:
-    if: github.head_ref == 'build-artifacts'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Block merge from build-artifacts
         run: |
-          echo "::error::build-artifacts is a CI-only artifact branch. It must never be merged into main."
-          exit 1
+          if [ "${{ github.head_ref }}" = "build-artifacts" ]; then
+            echo "::error::build-artifacts is a CI-only artifact branch. It must never be merged into main."
+            exit 1
+          fi
 
   quality-and-security:
     runs-on: ubuntu-latest
