@@ -3,6 +3,8 @@ import sys
 from tqa.models import ProjectReport, ComponentReport
 from tqa.engine import AnalysisEngine
 
+SURVIVING_MUTANT_LIMIT = 10
+
 
 def _detect_language(component: ComponentReport) -> str:
     extensions = [os.path.splitext(f)[1] for f in component.files]
@@ -56,6 +58,45 @@ def _comp_display_name(name: str) -> str:
     return name.replace("-", " ").replace("_", " ").title()
 
 
+def _surviving_mutant_sort_key(finding: dict) -> tuple:
+    return (
+        0 if finding["covered"] else 1,
+        0 if finding["all_survived"] else 1,
+        -finding["survived"],
+        -finding["total"],
+        finding["file"],
+        finding["line"],
+    )
+
+
+def _mutator_descriptions(finding: dict) -> str:
+    descriptions = []
+    for mutant in finding["mutants"]:
+        description = mutant.get("description")
+        if description and description not in descriptions:
+            descriptions.append(description)
+    if not descriptions:
+        return "N/A"
+    return ", ".join(descriptions)
+
+
+def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
+    rows = [
+        "| File | Line | Coverage | Mutants | Mutator Details |",
+        "| :--- | :---: | :---: | :---: | :--- |",
+    ]
+    for finding in sorted(findings, key=_surviving_mutant_sort_key)[:SURVIVING_MUTANT_LIMIT]:
+        coverage = "Covered" if finding["covered"] else "Uncovered"
+        mutants = f"{finding['survived']}/{finding['total']} survived"
+        if finding["killed"]:
+            mutants = f"{finding['killed']} killed, {mutants}"
+        rows.append(
+            f"| `{finding['file']}` | {finding['line']} | {coverage} | "
+            f"{mutants} | {_mutator_descriptions(finding)} |"
+        )
+    return rows
+
+
 def generate_markdown_summary(report: ProjectReport) -> str:
     lines = ["# TQA Report Summary", ""]
     # Show per-component headers when there are multiple components, or when
@@ -88,6 +129,16 @@ def generate_markdown_summary(report: ProjectReport) -> str:
         lines.append("")
 
     engine = AnalysisEngine()
+    surviving_mutants = engine.get_surviving_mutants(report)
+    if surviving_mutants:
+        lines.append("**Surviving Mutants**")
+        lines.append("")
+        lines.extend(_surviving_mutant_rows(surviving_mutants))
+        if len(surviving_mutants) > SURVIVING_MUTANT_LIMIT:
+            lines.append("")
+            lines.append(f"_Showing top {SURVIVING_MUTANT_LIMIT} of {len(surviving_mutants)} findings._")
+        lines.append("")
+
     gaps = engine.get_critical_gaps(report)
     if gaps:
         lines.append("\n## Critical Gaps (covered but 0% killed)")
