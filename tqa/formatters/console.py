@@ -1,6 +1,9 @@
 from rich.console import Console
 from rich.table import Table
+from tqa.engine import AnalysisEngine
 from tqa.models import ProjectReport, ComponentReport
+
+SURVIVING_MUTANT_LIMIT = 10
 
 
 def _render_component_table(console: Console, component: ComponentReport, title: str) -> None:
@@ -28,6 +31,58 @@ def _render_component_table(console: Console, component: ComponentReport, title:
     console.print(table)
 
 
+def _surviving_mutant_sort_key(finding: dict) -> tuple:
+    return (
+        0 if finding["covered"] else 1,
+        0 if finding["all_survived"] else 1,
+        -finding["survived"],
+        -finding["total"],
+        finding["file"],
+        finding["line"],
+    )
+
+
+def _mutator_descriptions(finding: dict) -> str:
+    descriptions = []
+    for mutant in finding["mutants"]:
+        description = mutant.get("description")
+        if description and description not in descriptions:
+            descriptions.append(description)
+    if not descriptions:
+        return "N/A"
+    return ", ".join(descriptions)
+
+
+def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
+    if not findings:
+        return
+
+    table = Table(title="Surviving Mutants")
+    table.add_column("File", style="cyan")
+    table.add_column("Line", justify="right")
+    table.add_column("Coverage", justify="center")
+    table.add_column("Mutants", justify="right")
+    table.add_column("Mutator Details")
+
+    for finding in sorted(findings, key=_surviving_mutant_sort_key)[:SURVIVING_MUTANT_LIMIT]:
+        coverage = "Covered" if finding["covered"] else "Uncovered"
+        mutants = f"{finding['survived']}/{finding['total']} survived"
+        if finding["killed"]:
+            mutants = f"{finding['killed']} killed, {mutants}"
+        table.add_row(
+            finding["file"],
+            str(finding["line"]),
+            coverage,
+            mutants,
+            _mutator_descriptions(finding),
+        )
+
+    console.print("")
+    console.print(table)
+    if len(findings) > SURVIVING_MUTANT_LIMIT:
+        console.print(f"[dim]Showing top {SURVIVING_MUTANT_LIMIT} of {len(findings)} findings.[/]")
+
+
 def print_summary_table(report: ProjectReport) -> None:
     console = Console(legacy_windows=False)
     multi = len(report.components) > 1 or (
@@ -53,3 +108,5 @@ def print_summary_table(report: ProjectReport) -> None:
 
     if multi and report.has_mutation_data:
         console.print(f"\n[bold]Total Project Test Strength:[/] [green]{report.total_test_strength * 100:.1f}%[/]")
+
+    _render_surviving_mutants(console, AnalysisEngine().get_surviving_mutants(report))
