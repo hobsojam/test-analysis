@@ -362,7 +362,10 @@ The report structure is:
 - **Headline metric** (Total Project Test Strength) at the top
 - Per-file breakdown in a collapsible `<details>` block
 - Status column uses emoji: ✅ Healthy / 🟡 Weak / 🔴 Blind
+- Surviving mutants table with file, line, mutator details, and rule-based test suggestions
 - Critical gaps table (if any) at the bottom
+
+Suggestions are deterministic heuristics based on the mutator name and optional source-line context. They are meant to point at the missing test signal, not to guarantee a complete test case.
 
 #### Writing to the job summary
 
