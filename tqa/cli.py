@@ -25,6 +25,7 @@ def main() -> None:
 @click.option("--mutmut", "mutmut_path", type=click.Path(), help="Path to mutmut junit.xml")
 @click.option("--format", type=click.Choice(["console", "github"]), default="console")
 @click.option("--fail-under", type=float, default=0.0, help="Fail if total TSI is below this threshold")
+@click.option("--export-svg", "export_svg", type=click.Path(), default=None, help="Export console output as SVG")
 def analyze(
     config_path: str,
     coverage_path: str,
@@ -34,6 +35,7 @@ def analyze(
     mutmut_path: str,
     format: str,
     fail_under: float,
+    export_svg: str,
 ) -> None:
     """Analyze test quality by correlating reports."""
     engine = AnalysisEngine()
@@ -68,7 +70,12 @@ def analyze(
         return
 
     if format == "console":
-        print_summary_table(report)
+        if export_svg:
+            recording = Console(record=True, legacy_windows=False, width=160)
+            print_summary_table(report, console=recording)
+            recording.save_svg(export_svg, title="TQA — Test Quality Summary")
+        else:
+            print_summary_table(report)
     elif format == "github":
         click.echo(generate_markdown_summary(report))
         print_github_annotations(report)

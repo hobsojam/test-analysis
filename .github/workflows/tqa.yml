@@ -65,6 +65,12 @@ jobs:
       - name: Export mutation results
         run: mutmut junitxml > mutmut.xml
 
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: mutmut.xml
+
       - name: Analyze with TQA
         run: |
           python -m tqa.cli analyze \
@@ -103,6 +109,46 @@ jobs:
                 body: summary,
               });
             }
+
+  update-sample-output:
+    name: Update README sample output
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [quality-and-security]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install tqa
+        run: pip install -e .
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: mutation-report
+
+      - name: Generate sample output SVG
+        run: |
+          python -m tqa.cli analyze \
+            --config tqa.toml \
+            --export-svg docs/sample-output.svg
+
+      - name: Commit updated SVG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/sample-output.svg
+          git diff --staged --quiet || git commit -m "docs: update sample output [skip ci]"
+          git push
 
   sonar:
     name: SonarCloud

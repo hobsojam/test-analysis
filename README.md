@@ -331,18 +331,9 @@ Use `--fail-under 80` on the `tqa analyze` line to enforce a minimum TSI quality
 
 ### Console (default)
 
-```
-          TQA - Test Quality Summary
-┌─────────────┬──────────┬─────────────────────┬─────────┐
-│ File        │ Coverage │ Test Strength (TSI)  │ Status  │
-├─────────────┼──────────┼─────────────────────┼─────────┤
-│ models.py   │   95.0%  │              88.5%   │ Healthy │
-│ engine.py   │   80.0%  │              62.0%   │ Weak    │
-│ index.js    │   39.2%  │                N/A   │ No data │
-└─────────────┴──────────┴─────────────────────┴─────────┘
+The image below is generated automatically from this project's own CI run on every merge to `main`.
 
-Total Project Test Strength: 84.2%
-```
+![TQA console output](docs/sample-output.svg)
 
 `N/A` in the TSI column means no mutation data was loaded for that file — coverage alone cannot measure test strength.
 
