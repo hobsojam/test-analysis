@@ -50,6 +50,9 @@ def _status_emoji(tsi: float) -> str:
     return "🔴 Blind"
 
 
+# NOTE: Column structure and thresholds must stay in sync with _render_component_table() in console.py.
+# GitHub Markdown does not support ANSI color, so the TSI value is plain text here; color is carried
+# by the Status emoji instead.
 def _component_table(component: ComponentReport) -> list[str]:
     rows = [
         "| File | Coverage | Test Strength (TSI) | Status |",
