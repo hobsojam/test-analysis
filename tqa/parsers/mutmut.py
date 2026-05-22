@@ -50,7 +50,9 @@ class MutmutParser(Parser):
                     id=str(mutant_id),
                     status=status,
                     line=line,
-                    description="mutmut mutation",
+                    # mutmut JUnit XML does not include mutation-type info, so
+                    # description is left None; recommendation rules cannot fire.
+                    description=None,
                 )
             )
 
