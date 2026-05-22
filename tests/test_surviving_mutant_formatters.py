@@ -51,10 +51,14 @@ def test_github_formatter_reports_surviving_mutants_with_line_counts_and_mutator
     markdown = generate_markdown_summary(report)
 
     assert "**Surviving Mutants**" in markdown
-    assert "| `src/model.py` | 3 | Covered | 1/1 survived | ReturnValue |" in markdown
+    assert (
+        "| `src/model.py` | 3 | Covered | 1/1 survived | ReturnValue | "
+        "Assert the exact returned value for this path. |"
+    ) in markdown
     assert (
         "| `src/api.py` | 12 | Covered | 1 killed, 2/3 survived | "
-        "ConditionalBoundary |"
+        "ConditionalBoundary | Add branch or boundary-value tests that distinguish "
+        "each side of this condition. |"
     ) in markdown
 
 
@@ -121,3 +125,4 @@ def test_console_formatter_reports_surviving_mutants(capsys):
     assert "src/api.py" in output
     assert "1 killed, 1/2 survived" in output
     assert "ConditionalBoundary" in output
+    assert "boundary-value tests" in output

@@ -36,3 +36,7 @@ def mutator_descriptions(finding: dict) -> str:
     if not descriptions:
         return "N/A"
     return ", ".join(descriptions)
+
+
+def suggestion_label(finding: dict) -> str:
+    return finding.get("suggestion") or "Add a test that catches the surviving mutation."

@@ -6,6 +6,7 @@ from tqa.formatters.surviving_mutants import (
     coverage_label,
     mutant_count_label,
     mutator_descriptions,
+    suggestion_label,
     sorted_surviving_findings,
 )
 from tqa.models import ProjectReport, ComponentReport
@@ -44,8 +45,9 @@ def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
     table.add_column("File", style="cyan")
     table.add_column("Line", justify="right")
     table.add_column("Coverage", justify="center")
-    table.add_column("Mutants", justify="right")
-    table.add_column("Mutator Details")
+    table.add_column("Mutants", justify="right", no_wrap=True)
+    table.add_column("Mutator Details", no_wrap=True)
+    table.add_column("Suggested Test Focus")
 
     for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
         table.add_row(
@@ -54,6 +56,7 @@ def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
             coverage_label(finding),
             mutant_count_label(finding),
             mutator_descriptions(finding),
+            suggestion_label(finding),
         )
 
     console.print("")
@@ -63,7 +66,7 @@ def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
 
 
 def print_summary_table(report: ProjectReport) -> None:
-    console = Console(legacy_windows=False)
+    console = Console(legacy_windows=False, width=160)
     multi = len(report.components) > 1 or (
         len(report.components) == 1 and "default" not in report.components
     )

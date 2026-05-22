@@ -7,6 +7,7 @@ from tqa.formatters.surviving_mutants import (
     coverage_label,
     mutant_count_label,
     mutator_descriptions,
+    suggestion_label,
     sorted_surviving_findings,
 )
 
@@ -73,13 +74,14 @@ def _comp_display_name(name: str) -> str:
 
 def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
     rows = [
-        "| File | Line | Coverage | Mutants | Mutator Details |",
-        "| :--- | :---: | :---: | :---: | :--- |",
+        "| File | Line | Coverage | Mutants | Mutator Details | Suggested Test Focus |",
+        "| :--- | :---: | :---: | :---: | :--- | :--- |",
     ]
     for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
         rows.append(
             f"| `{finding['file']}` | {finding['line']} | {coverage_label(finding)} | "
-            f"{mutant_count_label(finding)} | {mutator_descriptions(finding)} |"
+            f"{mutant_count_label(finding)} | {mutator_descriptions(finding)} | "
+            f"{suggestion_label(finding)} |"
         )
     return rows
 

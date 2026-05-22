@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from tqa.models import ProjectReport, ComponentReport, LineData
 from tqa.parsers import registry
+from tqa.recommendations import recommendation_for_finding
 
 
 class AnalysisEngine:
@@ -86,6 +87,7 @@ class AnalysisEngine:
                             project_root,
                             context_lines,
                         )
+                    finding["suggestion"] = recommendation_for_finding(finding)
                     findings.append(finding)
         return findings
 
