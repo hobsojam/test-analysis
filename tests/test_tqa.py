@@ -406,6 +406,25 @@ def test_github_formatter_default_component_no_header():
     assert "### " not in md
 
 
+def test_github_formatter_plain_filename_without_actions_env(monkeypatch):
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+    report = _make_report(killed=4, survived=1, covered=True)
+    md = generate_markdown_summary(report)
+    assert "`f.py`" in md
+    assert "](https://" not in md
+
+
+def test_github_formatter_linked_filename_with_actions_env(monkeypatch):
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    monkeypatch.setenv("GITHUB_SHA", "abc1234")
+    report = _make_report(killed=4, survived=1, covered=True)
+    md = generate_markdown_summary(report)
+    assert "[`f.py`](https://github.com/owner/repo/blob/abc1234/f.py)" in md
+
+
 # --- Formatter: console ---
 
 def test_console_formatter_runs_without_error():
