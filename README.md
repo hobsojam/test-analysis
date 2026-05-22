@@ -336,7 +336,7 @@ Use `--fail-under 80` on the `tqa analyze` line to enforce a minimum TSI quality
 
 The image below is generated automatically from this project's own CI run on every merge to `main`.
 
-![TQA console output](docs/sample-output.svg)
+![TQA console output](https://raw.githubusercontent.com/hobsojam/test-analysis/build-artifacts/sample-output.svg)
 
 `N/A` in the TSI column means no mutation data was loaded for that file — coverage alone cannot measure test strength.
 
@@ -393,22 +393,45 @@ Use `--export-svg` to keep a live screenshot of tqa's output in your README, gen
         with: { name: coverage-report }
       - uses: actions/download-artifact@v4
         with: { name: mutation-report }
-      - run: tqa analyze --config tqa.toml --export-svg docs/sample-output.svg
+      - run: tqa analyze --config tqa.toml --export-svg sample-output.svg
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/sample-output.svg
-          git diff --staged --quiet || git commit -m "docs: update sample output [skip ci]"
-          git push
+          git checkout --orphan tmp-build-artifacts
+          cp $GITHUB_WORKSPACE/sample-output.svg sample-output.svg
+          git add sample-output.svg
+          git commit -m "update sample output"
+          git push --force origin HEAD:build-artifacts
 ```
 
-Then reference it in your README:
+Then reference it in your README using the raw URL:
 
 ```markdown
-![TQA output](docs/sample-output.svg)
+![TQA output](https://raw.githubusercontent.com/your-org/your-repo/build-artifacts/sample-output.svg)
 ```
 
-The `[skip ci]` tag in the commit message prevents the auto-commit from triggering another pipeline run. `contents: write` is required for the push; scope it to this job rather than the whole workflow to keep other jobs read-only.
+#### About the `build-artifacts` branch
+
+The `build-artifacts` branch is a CI-only artifact store — **never merge it into `main`**:
+
+- It is an orphan branch (no shared history with `main`).
+- It is force-pushed on every merge to `main`, so its history is always exactly one commit.
+- Merging it would flood `main` with auto-generated binary content and corrupt the git history.
+
+To enforce this technically, add the `prevent-build-artifacts-merge` job below to your workflow and mark it as a required status check in your branch protection / ruleset settings:
+
+```yaml
+  prevent-build-artifacts-merge:
+    if: github.head_ref == 'build-artifacts'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block merge from build-artifacts
+        run: |
+          echo "::error::build-artifacts is a CI-only artifact branch. It must never be merged into main."
+          exit 1
+```
+
+Pushing to a dedicated orphan branch sidesteps branch protection rules that require pull requests on the default branch. `contents: write` is required; scope it to this job to keep other jobs read-only.
 
 ## Development
 

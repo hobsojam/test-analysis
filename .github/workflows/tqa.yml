@@ -11,6 +11,17 @@ permissions:
   pull-requests: write
 
 jobs:
+  prevent-build-artifacts-merge:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block merge from build-artifacts
+        run: |
+          if [ "${{ github.head_ref }}" = "build-artifacts" ]; then
+            echo "::error::build-artifacts is a CI-only artifact branch. It must never be merged into main."
+            exit 1
+          fi
+
   quality-and-security:
     runs-on: ubuntu-latest
     steps:
@@ -140,15 +151,17 @@ jobs:
         run: |
           python -m tqa.cli analyze \
             --config tqa.toml \
-            --export-svg docs/sample-output.svg
+            --export-svg sample-output.svg
 
-      - name: Commit updated SVG
+      - name: Push SVG to build-artifacts branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/sample-output.svg
-          git diff --staged --quiet || git commit -m "docs: update sample output [skip ci]"
-          git push
+          git checkout --orphan tmp-build-artifacts
+          cp $GITHUB_WORKSPACE/sample-output.svg sample-output.svg
+          git add sample-output.svg
+          git commit -m "update sample output"
+          git push --force origin HEAD:build-artifacts
 
   sonar:
     name: SonarCloud
