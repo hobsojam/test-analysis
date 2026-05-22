@@ -12,6 +12,7 @@ from tqa.formatters.surviving_mutants import (
 from tqa.models import ProjectReport, ComponentReport
 
 
+# NOTE: Column structure and thresholds must stay in sync with _component_table() in github.py.
 def _render_component_table(console: Console, component: ComponentReport, title: str) -> None:
     table = Table(title=title)
     table.add_column("File", style="cyan")
@@ -23,12 +24,15 @@ def _render_component_table(console: Console, component: ComponentReport, title:
         cov = file_report.line_coverage * 100
         if file_report.has_mutation_data:
             tsi = file_report.test_strength * 100
+            color = "green"
             status = "[green]Healthy[/]"
             if tsi < 80:
+                color = "yellow"
                 status = "[yellow]Weak[/]"
             if tsi < 50:
+                color = "red"
                 status = "[red]Blind[/]"
-            tsi_str = f"{tsi:.1f}%"
+            tsi_str = f"[{color}]{tsi:.1f}%[/]"
         else:
             tsi_str = "N/A"
             status = "[dim]No mutants[/]"
