@@ -1,5 +1,14 @@
 import os
 import sys
+from tqa.engine import AnalysisEngine
+from tqa.formatters.surviving_mutants import (
+    SURVIVING_MUTANT_LIMIT,
+    coverage_label,
+    mutant_count_label,
+    mutator_descriptions,
+    suggestion_label,
+    sorted_surviving_findings,
+)
 from tqa.models import ProjectReport, ComponentReport
 
 
@@ -17,15 +26,6 @@ def _file_link(file_path: str, base_url: str | None) -> str:
     if base_url:
         return f"[`{file_path}`]({base_url}/{file_path})"
     return f"`{file_path}`"
-from tqa.engine import AnalysisEngine
-from tqa.formatters.surviving_mutants import (
-    SURVIVING_MUTANT_LIMIT,
-    coverage_label,
-    mutant_count_label,
-    mutator_descriptions,
-    suggestion_label,
-    sorted_surviving_findings,
-)
 
 
 def _detect_language(component: ComponentReport) -> str:
