@@ -1,6 +1,5 @@
 import os
 import sys
-from tqa.models import ProjectReport, ComponentReport
 from tqa.engine import AnalysisEngine
 from tqa.formatters.surviving_mutants import (
     SURVIVING_MUTANT_LIMIT,
@@ -10,6 +9,23 @@ from tqa.formatters.surviving_mutants import (
     suggestion_label,
     sorted_surviving_findings,
 )
+from tqa.models import ProjectReport, ComponentReport
+
+
+def _blob_base_url() -> str | None:
+    """Return the GitHub blob URL prefix for the current commit, or None when not in Actions."""
+    server = os.environ.get("GITHUB_SERVER_URL", "").rstrip("/")
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    sha = os.environ.get("GITHUB_SHA", "")
+    if server and repo and sha:
+        return f"{server}/{repo}/blob/{sha}"
+    return None
+
+
+def _file_link(file_path: str, base_url: str | None) -> str:
+    if base_url:
+        return f"[`{file_path}`]({base_url}/{file_path})"
+    return f"`{file_path}`"
 
 
 def _detect_language(component: ComponentReport) -> str:
@@ -58,6 +74,7 @@ def _component_table(component: ComponentReport) -> list[str]:
         "| File | Coverage | Test Strength (TSI) | Status |",
         "| :--- | :---: | :---: | :---: |",
     ]
+    base_url = _blob_base_url()
     for file_path, file_report in component.files.items():
         cov = file_report.line_coverage * 100
         if file_report.has_mutation_data:
@@ -67,7 +84,7 @@ def _component_table(component: ComponentReport) -> list[str]:
         else:
             tsi_str = "N/A"
             status = "—"
-        rows.append(f"| `{file_path}` | {cov:.1f}% | {tsi_str} | {status} |")
+        rows.append(f"| {_file_link(file_path, base_url)} | {cov:.1f}% | {tsi_str} | {status} |")
     return rows
 
 
@@ -80,9 +97,10 @@ def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
         "| File | Line | Coverage | Mutants | Mutator Details | Suggested Test Focus |",
         "| :--- | :---: | :---: | :---: | :--- | :--- |",
     ]
+    base_url = _blob_base_url()
     for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
         rows.append(
-            f"| `{finding['file']}` | {finding['line']} | {coverage_label(finding)} | "
+            f"| {_file_link(finding['file'], base_url)} | {finding['line']} | {coverage_label(finding)} | "
             f"{mutant_count_label(finding)} | {mutator_descriptions(finding)} | "
             f"{suggestion_label(finding)} |"
         )

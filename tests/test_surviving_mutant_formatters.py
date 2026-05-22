@@ -1,6 +1,15 @@
+import pytest
 from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary
 from tqa.models import ComponentReport, FileReport, LineData, MutantData, ProjectReport
+
+
+@pytest.fixture(autouse=True)
+def clear_github_actions_env(monkeypatch):
+    """Ensure GitHub Actions env vars are absent so file links don't appear in output."""
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
 
 
 def _report_with_lines(lines: list[tuple[str, int, bool, list[tuple[str, str, str | None]]]]) -> ProjectReport:
