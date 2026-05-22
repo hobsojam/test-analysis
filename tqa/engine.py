@@ -1,5 +1,6 @@
 import os
-from typing import Dict, List
+from pathlib import Path
+from typing import Dict, List, Optional
 from tqa.models import ProjectReport, ComponentReport
 from tqa.parsers import registry
 
@@ -22,7 +23,12 @@ class AnalysisEngine:
                 report.components[comp_name] = component
         return report
 
-    def get_surviving_mutants(self, report: ProjectReport) -> List[dict]:
+    def get_surviving_mutants(
+        self,
+        report: ProjectReport,
+        project_root: Optional[str] = None,
+        context_lines: int = 0,
+    ) -> List[dict]:
         """Return structured findings for lines with unkilled mutants."""
         findings = []
         for component_name, component in report.components.items():
@@ -37,7 +43,7 @@ class AnalysisEngine:
                     survived = len(line_data.mutants) - killed
                     if survived == 0:
                         continue
-                    findings.append({
+                    finding = {
                         "component": component_name,
                         "file": file_path,
                         "line": line_num,
@@ -55,8 +61,73 @@ class AnalysisEngine:
                             for mutant in line_data.mutants
                             if mutant.status.lower() != "killed"
                         ],
-                    })
+                    }
+                    if project_root is not None:
+                        finding["source_context"] = self.get_source_context(
+                            file_path,
+                            line_num,
+                            project_root,
+                            context_lines,
+                        )
+                    findings.append(finding)
         return findings
+
+    def get_source_context(
+        self,
+        file_path: str,
+        line_number: int,
+        project_root: str,
+        context_lines: int = 0,
+    ) -> Optional[dict]:
+        """Return source text around a line, constrained to project_root."""
+        source_path = self._resolve_source_path(file_path, project_root)
+        if source_path is None:
+            return None
+
+        try:
+            lines = source_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            return None
+
+        if line_number < 1 or line_number > len(lines):
+            return None
+
+        extra_lines = max(context_lines, 0)
+        start_line = max(line_number - extra_lines, 1)
+        end_line = min(line_number + extra_lines, len(lines))
+        context = [
+            {
+                "line": current_line,
+                "text": lines[current_line - 1],
+                "is_target": current_line == line_number,
+            }
+            for current_line in range(start_line, end_line + 1)
+        ]
+
+        return {
+            "path": str(source_path),
+            "line": line_number,
+            "text": lines[line_number - 1],
+            "start_line": start_line,
+            "end_line": end_line,
+            "context": context,
+        }
+
+    def _resolve_source_path(self, file_path: str, project_root: str) -> Optional[Path]:
+        root = Path(project_root).resolve()
+        candidate = Path(file_path)
+        if not candidate.is_absolute():
+            candidate = root / candidate
+
+        try:
+            source_path = candidate.resolve()
+            source_path.relative_to(root)
+        except (OSError, ValueError):
+            return None
+
+        if not source_path.is_file():
+            return None
+        return source_path
 
     def get_critical_gaps(self, report: ProjectReport) -> List[dict]:
         """Identifies covered lines with mutation data but 0% mutation kill rate."""
