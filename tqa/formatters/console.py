@@ -69,8 +69,9 @@ def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
         console.print(f"[dim]Showing top {SURVIVING_MUTANT_LIMIT} of {len(findings)} findings.[/]")
 
 
-def print_summary_table(report: ProjectReport) -> None:
-    console = Console(legacy_windows=False, width=160)
+def print_summary_table(report: ProjectReport, console: Console | None = None) -> None:
+    if console is None:
+        console = Console(legacy_windows=False, width=160)
     multi = len(report.components) > 1 or (
         len(report.components) == 1 and "default" not in report.components
     )

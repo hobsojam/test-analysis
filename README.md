@@ -92,7 +92,10 @@ tqa analyze [OPTIONS]
   --pit PATH          PIT mutations.xml
   --format [console|github]  Output format (default: console)
   --fail-under FLOAT  Exit 1 if TSI is below this percentage
+  --export-svg PATH   Save the console output as an SVG image
 ```
+
+`--export-svg` uses Rich's built-in SVG export to produce a styled terminal image — useful for embedding live output in a README. See the [GitHub Actions integration](#github-actions-integration) section for an example of auto-updating it on every merge.
 
 Multiple flags can be combined — tqa merges coverage and mutation data by file path.
 
@@ -331,18 +334,9 @@ Use `--fail-under 80` on the `tqa analyze` line to enforce a minimum TSI quality
 
 ### Console (default)
 
-```
-          TQA - Test Quality Summary
-┌─────────────┬──────────┬─────────────────────┬─────────┐
-│ File        │ Coverage │ Test Strength (TSI)  │ Status  │
-├─────────────┼──────────┼─────────────────────┼─────────┤
-│ models.py   │   95.0%  │              88.5%   │ Healthy │
-│ engine.py   │   80.0%  │              62.0%   │ Weak    │
-│ index.js    │   39.2%  │                N/A   │ No data │
-└─────────────┴──────────┴─────────────────────┴─────────┘
+The image below is generated automatically from this project's own CI run on every merge to `main`.
 
-Total Project Test Strength: 84.2%
-```
+![TQA console output](docs/sample-output.svg)
 
 `N/A` in the TSI column means no mutation data was loaded for that file — coverage alone cannot measure test strength.
 
@@ -380,6 +374,41 @@ Pipe the output to `$GITHUB_STEP_SUMMARY` to make the report visible in the Acti
 ```
 
 The two outputs are independent — write to both, or either one alone.
+
+### Auto-updating a README sample output image
+
+Use `--export-svg` to keep a live screenshot of tqa's output in your README, generated from your real CI data on every merge to `main`:
+
+```yaml
+  update-sample-output:
+    if: github.event_name == 'push'
+    needs: [your-test-job]          # must run after coverage + mutation reports exist
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install tqa
+      - uses: actions/download-artifact@v4
+        with: { name: coverage-report }
+      - uses: actions/download-artifact@v4
+        with: { name: mutation-report }
+      - run: tqa analyze --config tqa.toml --export-svg docs/sample-output.svg
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/sample-output.svg
+          git diff --staged --quiet || git commit -m "docs: update sample output [skip ci]"
+          git push
+```
+
+Then reference it in your README:
+
+```markdown
+![TQA output](docs/sample-output.svg)
+```
+
+The `[skip ci]` tag in the commit message prevents the auto-commit from triggering another pipeline run. `contents: write` is required for the push; scope it to this job rather than the whole workflow to keep other jobs read-only.
 
 ## Development
 
