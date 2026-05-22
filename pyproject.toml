@@ -38,6 +38,7 @@ tests_dir = "tests/"
 
 [tool.coverage.run]
 source = ["tqa"]
+relative_files = true
 
 [tool.mypy]
 python_version = "3.11"
