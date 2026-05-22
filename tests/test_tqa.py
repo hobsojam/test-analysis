@@ -193,48 +193,43 @@ def test_correlation():
 
 # --- Engine: path reconciliation ---
 
-def test_engine_surviving_mutants_includes_fully_survived_line():
-    report = _make_report(killed=0, survived=2, covered=True)
-    findings = AnalysisEngine().get_surviving_mutants(report)
-
-    assert findings == [{
-        "component": "default",
-        "file": "f.py",
-        "line": 1,
-        "covered": True,
-        "killed": 0,
-        "survived": 2,
-        "total": 2,
-        "all_survived": True,
-        "mutants": [
-            {"id": "0", "status": "Survived", "description": None},
-            {"id": "1", "status": "Survived", "description": None},
-        ],
-    }]
-
-def test_engine_surviving_mutants_includes_partially_survived_line():
-    report = _make_report(killed=1, survived=2, covered=True)
-    findings = AnalysisEngine().get_surviving_mutants(report)
+@pytest.mark.parametrize(
+    "killed,survived,covered,expected",
+    [
+        (0, 2, True, {"killed": 0, "survived": 2, "total": 2, "all_survived": True}),
+        (1, 2, True, {"killed": 1, "survived": 2, "total": 3, "all_survived": False}),
+        (0, 1, False, {"killed": 0, "survived": 1, "total": 1, "all_survived": True}),
+    ],
+)
+def test_engine_surviving_mutants_reports_survivor_metadata(
+    killed: int,
+    survived: int,
+    covered: bool,
+    expected: dict,
+):
+    findings = AnalysisEngine().get_surviving_mutants(
+        _make_report(killed=killed, survived=survived, covered=covered)
+    )
 
     assert len(findings) == 1
-    assert findings[0]["killed"] == 1
-    assert findings[0]["survived"] == 2
-    assert findings[0]["total"] == 3
-    assert findings[0]["all_survived"] is False
-    assert [m["status"] for m in findings[0]["mutants"]] == ["Survived", "Survived"]
+    for key, value in expected.items():
+        assert findings[0][key] == value
+    assert findings[0]["component"] == "default"
+    assert findings[0]["file"] == "f.py"
+    assert findings[0]["line"] == 1
+    assert findings[0]["covered"] is covered
+    assert len(findings[0]["mutants"]) == survived
 
-def test_engine_surviving_mutants_excludes_all_killed_line():
-    report = _make_report(killed=2, survived=0, covered=True)
 
+@pytest.mark.parametrize(
+    "report",
+    [
+        _make_report(killed=2, survived=0, covered=True),
+    ],
+)
+def test_engine_surviving_mutants_excludes_lines_without_survivors(report: ProjectReport):
     assert AnalysisEngine().get_surviving_mutants(report) == []
 
-def test_engine_surviving_mutants_keeps_uncovered_survivor_metadata():
-    report = _make_report(killed=0, survived=1, covered=False)
-    findings = AnalysisEngine().get_surviving_mutants(report)
-
-    assert len(findings) == 1
-    assert findings[0]["covered"] is False
-    assert findings[0]["all_survived"] is True
 
 def test_engine_surviving_mutants_excludes_lines_without_mutants():
     component = ComponentReport()
@@ -246,19 +241,13 @@ def test_engine_surviving_mutants_excludes_lines_without_mutants():
     assert AnalysisEngine().get_surviving_mutants(report) == []
 
 def test_engine_surviving_mutants_includes_component_name_and_description():
-    report = ProjectReport()
-    component = ComponentReport()
-    component.files["api.py"] = FileReport(file_path="api.py")
-    component.files["api.py"].lines[7] = LineData(line_number=7, is_covered=True)
-    component.files["api.py"].lines[7].mutants.append(
-        MutantData(
-            id="mut-1",
-            status="SURVIVED",
-            line=7,
-            description="ConditionalBoundary",
-        )
+    report = _report_with_line(
+        "backend",
+        "api.py",
+        7,
+        True,
+        [MutantData(id="mut-1", status="SURVIVED", line=7, description="ConditionalBoundary")],
     )
-    report.components["backend"] = component
 
     findings = AnalysisEngine().get_surviving_mutants(report)
 
@@ -269,28 +258,47 @@ def test_engine_surviving_mutants_includes_component_name_and_description():
         "description": "ConditionalBoundary",
     }]
 
-def test_engine_critical_gaps_uses_only_covered_fully_survived_lines():
+
+def _report_with_line(
+    component_name: str,
+    file_path: str,
+    line_number: int,
+    covered: bool,
+    mutants: list[MutantData],
+) -> ProjectReport:
     report = ProjectReport()
     component = ComponentReport()
-    component.files["f.py"] = FileReport(file_path="f.py")
-    component.files["f.py"].lines[1] = _make_file(
-        killed=0,
-        survived=1,
-        covered=True,
-    ).lines[1]
-    component.files["f.py"].lines[2] = _make_file(
-        killed=1,
-        survived=1,
-        covered=True,
-    ).lines[1]
-    component.files["f.py"].lines[2].line_number = 2
-    component.files["f.py"].lines[3] = _make_file(
-        killed=0,
-        survived=1,
-        covered=False,
-    ).lines[1]
-    component.files["f.py"].lines[3].line_number = 3
-    report.components["default"] = component
+    component.files[file_path] = FileReport(file_path=file_path)
+    component.files[file_path].lines[line_number] = LineData(
+        line_number=line_number,
+        is_covered=covered,
+        mutants=mutants,
+    )
+    report.components[component_name] = component
+    return report
+
+
+def test_engine_critical_gaps_uses_only_covered_fully_survived_lines():
+    report = _report_with_line(
+        "default",
+        "f.py",
+        1,
+        True,
+        [MutantData(id="1", status="Survived", line=1)],
+    )
+    report.components["default"].files["f.py"].lines[2] = LineData(
+        line_number=2,
+        is_covered=True,
+        mutants=[
+            MutantData(id="2", status="Killed", line=2),
+            MutantData(id="3", status="Survived", line=2),
+        ],
+    )
+    report.components["default"].files["f.py"].lines[3] = LineData(
+        line_number=3,
+        is_covered=False,
+        mutants=[MutantData(id="4", status="Survived", line=3)],
+    )
 
     assert AnalysisEngine().get_critical_gaps(report) == [{
         "file": "f.py",

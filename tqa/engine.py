@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import Dict, List, Optional
-from tqa.models import ProjectReport, ComponentReport
+from tqa.models import ProjectReport, ComponentReport, LineData
 from tqa.parsers import registry
 
 
@@ -11,7 +11,7 @@ class AnalysisEngine:
         return self.run_multi({"default": inputs})
 
     def run_multi(self, components: Dict[str, Dict[str, str]]) -> ProjectReport:
-        """Multi-component analysis. components maps name to parser-key → file-path."""
+        """Multi-component analysis. components maps name to parser-key -> file-path."""
         report = ProjectReport()
         for comp_name, inputs in components.items():
             component = ComponentReport()
@@ -22,6 +22,41 @@ class AnalysisEngine:
             if component.files:
                 report.components[comp_name] = component
         return report
+
+    def _surviving_mutant_finding(
+        self,
+        component_name: str,
+        file_path: str,
+        line_num: int,
+        line_data: LineData,
+    ) -> dict | None:
+        killed = sum(1 for mutant in line_data.mutants if self._is_killed(mutant.status))
+        survived = len(line_data.mutants) - killed
+        if survived == 0:
+            return None
+        return {
+            "component": component_name,
+            "file": file_path,
+            "line": line_num,
+            "covered": line_data.is_covered,
+            "killed": killed,
+            "survived": survived,
+            "total": len(line_data.mutants),
+            "all_survived": killed == 0,
+            "mutants": [
+                {
+                    "id": mutant.id,
+                    "status": mutant.status,
+                    "description": mutant.description,
+                }
+                for mutant in line_data.mutants
+                if not self._is_killed(mutant.status)
+            ],
+        }
+
+    @staticmethod
+    def _is_killed(status: str) -> bool:
+        return status.lower() == "killed"
 
     def get_surviving_mutants(
         self,
@@ -36,32 +71,14 @@ class AnalysisEngine:
                 for line_num, line_data in file_report.lines.items():
                     if not line_data.mutants:
                         continue
-                    killed = sum(
-                        1 for m in line_data.mutants
-                        if m.status.lower() == "killed"
+                    finding = self._surviving_mutant_finding(
+                        component_name,
+                        file_path,
+                        line_num,
+                        line_data,
                     )
-                    survived = len(line_data.mutants) - killed
-                    if survived == 0:
+                    if not finding:
                         continue
-                    finding = {
-                        "component": component_name,
-                        "file": file_path,
-                        "line": line_num,
-                        "covered": line_data.is_covered,
-                        "killed": killed,
-                        "survived": survived,
-                        "total": len(line_data.mutants),
-                        "all_survived": killed == 0,
-                        "mutants": [
-                            {
-                                "id": mutant.id,
-                                "status": mutant.status,
-                                "description": mutant.description,
-                            }
-                            for mutant in line_data.mutants
-                            if mutant.status.lower() != "killed"
-                        ],
-                    }
                     if project_root is not None:
                         finding["source_context"] = self.get_source_context(
                             file_path,
