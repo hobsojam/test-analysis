@@ -410,7 +410,28 @@ Then reference it in your README using the raw URL:
 ![TQA output](https://raw.githubusercontent.com/your-org/your-repo/build-artifacts/sample-output.svg)
 ```
 
-Pushing to a dedicated `build-artifacts` branch (created as an orphan with no source history) sidesteps branch protection rules that require pull requests on the default branch. `contents: write` is required; scope it to this job to keep other jobs read-only.
+#### About the `build-artifacts` branch
+
+The `build-artifacts` branch is a CI-only artifact store — **never merge it into `main`**:
+
+- It is an orphan branch (no shared history with `main`).
+- It is force-pushed on every merge to `main`, so its history is always exactly one commit.
+- Merging it would flood `main` with auto-generated binary content and corrupt the git history.
+
+To enforce this technically, add the `prevent-build-artifacts-merge` job below to your workflow and mark it as a required status check in your branch protection / ruleset settings:
+
+```yaml
+  prevent-build-artifacts-merge:
+    if: github.head_ref == 'build-artifacts'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block merge from build-artifacts
+        run: |
+          echo "::error::build-artifacts is a CI-only artifact branch. It must never be merged into main."
+          exit 1
+```
+
+Pushing to a dedicated orphan branch sidesteps branch protection rules that require pull requests on the default branch. `contents: write` is required; scope it to this job to keep other jobs read-only.
 
 ## Development
 
