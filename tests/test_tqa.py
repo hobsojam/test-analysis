@@ -155,6 +155,17 @@ def test_parse_mutmut():
     assert main_report.lines[5].mutants[0].status == "Killed"
     assert main_report.lines[10].mutants[0].status == "Survived"
 
+
+def test_parse_mutmut_description_is_none():
+    # mutmut JUnit XML carries no mutation-type info; description must be None
+    # so the recommendation engine falls back correctly instead of silently
+    # using a placeholder that prevents any keyword rules from firing.
+    component = ComponentReport()
+    parse_mutmut("tests/sample_mutmut.xml", component)
+    for line_data in component.files["main.py"].lines.values():
+        for mutant in line_data.mutants:
+            assert mutant.description is None
+
 def test_parse_mutmut_line_numbers():
     component = ComponentReport()
     parse_mutmut("tests/sample_mutmut.xml", component)

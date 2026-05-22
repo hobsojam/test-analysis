@@ -45,6 +45,14 @@ def test_recommendation_uses_generic_fallback_for_unknown_mutators():
     )
 
 
+def test_recommendation_uses_generic_fallback_when_description_is_none():
+    # mutmut JUnit XML provides no mutation type; None description must not crash
+    # and must produce the generic fallback (not a placeholder like "mutmut mutation").
+    assert recommendation_for_finding(_finding(None)) == (
+        "Add a test that fails when this mutation changes the observable behavior."
+    )
+
+
 def test_recommendation_can_include_source_focus():
     finding = _finding("ReturnValue")
     finding["source_context"] = {"text": "return user.is_admin"}
