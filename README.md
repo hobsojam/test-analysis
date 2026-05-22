@@ -397,12 +397,11 @@ Use `--export-svg` to keep a live screenshot of tqa's output in your README, gen
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin build-artifacts
-          git checkout build-artifacts
+          git checkout --orphan tmp-build-artifacts
           cp $GITHUB_WORKSPACE/sample-output.svg sample-output.svg
           git add sample-output.svg
-          git diff --staged --quiet || git commit -m "update sample output"
-          git push origin build-artifacts
+          git commit -m "update sample output"
+          git push --force origin HEAD:build-artifacts
 ```
 
 Then reference it in your README using the raw URL:
