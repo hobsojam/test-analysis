@@ -2,8 +2,13 @@ import os
 import sys
 from tqa.models import ProjectReport, ComponentReport
 from tqa.engine import AnalysisEngine
-
-SURVIVING_MUTANT_LIMIT = 10
+from tqa.formatters.surviving_mutants import (
+    SURVIVING_MUTANT_LIMIT,
+    coverage_label,
+    mutant_count_label,
+    mutator_descriptions,
+    sorted_surviving_findings,
+)
 
 
 def _detect_language(component: ComponentReport) -> str:
@@ -58,41 +63,15 @@ def _comp_display_name(name: str) -> str:
     return name.replace("-", " ").replace("_", " ").title()
 
 
-def _surviving_mutant_sort_key(finding: dict) -> tuple:
-    return (
-        0 if finding["covered"] else 1,
-        0 if finding["all_survived"] else 1,
-        -finding["survived"],
-        -finding["total"],
-        finding["file"],
-        finding["line"],
-    )
-
-
-def _mutator_descriptions(finding: dict) -> str:
-    descriptions = []
-    for mutant in finding["mutants"]:
-        description = mutant.get("description")
-        if description and description not in descriptions:
-            descriptions.append(description)
-    if not descriptions:
-        return "N/A"
-    return ", ".join(descriptions)
-
-
 def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
     rows = [
         "| File | Line | Coverage | Mutants | Mutator Details |",
         "| :--- | :---: | :---: | :---: | :--- |",
     ]
-    for finding in sorted(findings, key=_surviving_mutant_sort_key)[:SURVIVING_MUTANT_LIMIT]:
-        coverage = "Covered" if finding["covered"] else "Uncovered"
-        mutants = f"{finding['survived']}/{finding['total']} survived"
-        if finding["killed"]:
-            mutants = f"{finding['killed']} killed, {mutants}"
+    for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
         rows.append(
-            f"| `{finding['file']}` | {finding['line']} | {coverage} | "
-            f"{mutants} | {_mutator_descriptions(finding)} |"
+            f"| `{finding['file']}` | {finding['line']} | {coverage_label(finding)} | "
+            f"{mutant_count_label(finding)} | {mutator_descriptions(finding)} |"
         )
     return rows
 
