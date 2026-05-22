@@ -2,6 +2,13 @@ import os
 import sys
 from tqa.models import ProjectReport, ComponentReport
 from tqa.engine import AnalysisEngine
+from tqa.formatters.surviving_mutants import (
+    SURVIVING_MUTANT_LIMIT,
+    coverage_label,
+    mutant_count_label,
+    mutator_descriptions,
+    sorted_surviving_findings,
+)
 
 
 def _detect_language(component: ComponentReport) -> str:
@@ -64,6 +71,19 @@ def _comp_display_name(name: str) -> str:
     return name.replace("-", " ").replace("_", " ").title()
 
 
+def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
+    rows = [
+        "| File | Line | Coverage | Mutants | Mutator Details |",
+        "| :--- | :---: | :---: | :---: | :--- |",
+    ]
+    for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
+        rows.append(
+            f"| `{finding['file']}` | {finding['line']} | {coverage_label(finding)} | "
+            f"{mutant_count_label(finding)} | {mutator_descriptions(finding)} |"
+        )
+    return rows
+
+
 def generate_markdown_summary(report: ProjectReport) -> str:
     lines = ["## TQA Report Summary", ""]
     # Show per-component headers when there are multiple components, or when
@@ -101,6 +121,16 @@ def generate_markdown_summary(report: ProjectReport) -> str:
         lines.append("")
 
     engine = AnalysisEngine()
+    surviving_mutants = engine.get_surviving_mutants(report)
+    if surviving_mutants:
+        lines.append("**Surviving Mutants**")
+        lines.append("")
+        lines.extend(_surviving_mutant_rows(surviving_mutants))
+        if len(surviving_mutants) > SURVIVING_MUTANT_LIMIT:
+            lines.append("")
+            lines.append(f"_Showing top {SURVIVING_MUTANT_LIMIT} of {len(surviving_mutants)} findings._")
+        lines.append("")
+
     gaps = engine.get_critical_gaps(report)
     if gaps:
         lines.append("## Critical Gaps (covered but 0% killed)")

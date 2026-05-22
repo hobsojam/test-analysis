@@ -1,5 +1,13 @@
 from rich.console import Console
 from rich.table import Table
+from tqa.engine import AnalysisEngine
+from tqa.formatters.surviving_mutants import (
+    SURVIVING_MUTANT_LIMIT,
+    coverage_label,
+    mutant_count_label,
+    mutator_descriptions,
+    sorted_surviving_findings,
+)
 from tqa.models import ProjectReport, ComponentReport
 
 
@@ -28,6 +36,32 @@ def _render_component_table(console: Console, component: ComponentReport, title:
     console.print(table)
 
 
+def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
+    if not findings:
+        return
+
+    table = Table(title="Surviving Mutants")
+    table.add_column("File", style="cyan")
+    table.add_column("Line", justify="right")
+    table.add_column("Coverage", justify="center")
+    table.add_column("Mutants", justify="right")
+    table.add_column("Mutator Details")
+
+    for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
+        table.add_row(
+            finding["file"],
+            str(finding["line"]),
+            coverage_label(finding),
+            mutant_count_label(finding),
+            mutator_descriptions(finding),
+        )
+
+    console.print("")
+    console.print(table)
+    if len(findings) > SURVIVING_MUTANT_LIMIT:
+        console.print(f"[dim]Showing top {SURVIVING_MUTANT_LIMIT} of {len(findings)} findings.[/]")
+
+
 def print_summary_table(report: ProjectReport) -> None:
     console = Console(legacy_windows=False)
     multi = len(report.components) > 1 or (
@@ -53,3 +87,5 @@ def print_summary_table(report: ProjectReport) -> None:
 
     if multi and report.has_mutation_data:
         console.print(f"\n[bold]Total Project Test Strength:[/] [green]{report.total_test_strength * 100:.1f}%[/]")
+
+    _render_surviving_mutants(console, AnalysisEngine().get_surviving_mutants(report))
