@@ -398,7 +398,7 @@ Use `--export-svg` to keep a live screenshot of tqa's output in your README, gen
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout --orphan tmp-build-artifacts
-          cp $GITHUB_WORKSPACE/sample-output.svg sample-output.svg
+          git rm -rf --cached .
           git add sample-output.svg
           git commit -m "update sample output"
           git push --force origin HEAD:build-artifacts
