@@ -24,6 +24,7 @@ def main() -> None:
 @click.option("--stryker", "stryker_path", type=click.Path(), help="Path to Stryker JSON")
 @click.option("--pit", "pit_path", type=click.Path(), help="Path to PIT mutations.xml")
 @click.option("--mutmut", "mutmut_path", type=click.Path(), help="Path to mutmut junit.xml")
+@click.option("--mutant", "mutant_path", type=click.Path(), help="Path to Mutant session JSON or .mutant/results")
 @click.option("--format", type=click.Choice(["console", "github", "sonarcloud"]), default="console")
 @click.option("--fail-under", type=float, default=0.0, help="Fail if total TSI is below this threshold")
 @click.option("--export-svg", "export_svg", type=click.Path(), default=None, help="Export console output as SVG")
@@ -34,6 +35,7 @@ def analyze(
     stryker_path: str,
     pit_path: str,
     mutmut_path: str,
+    mutant_path: str,
     format: str,
     fail_under: float,
     export_svg: str,
@@ -52,6 +54,7 @@ def analyze(
             "stryker": stryker_path,
             "pit": pit_path,
             "mutmut": mutmut_path,
+            "mutant": mutant_path,
         })
 
     if not report.components:

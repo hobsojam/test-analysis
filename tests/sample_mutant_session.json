@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "subject_results": [
+    {
+      "subject": {
+        "identification": "Person#adult?",
+        "source_path": "lib/person.rb",
+        "source_line": 6
+      },
+      "mutation_results": [
+        {
+          "mutation": {
+            "id": "subject-1:mutation-1",
+            "operator_name": "Mutant::Mutator::Node::Gte",
+            "source_path": "lib/person.rb",
+            "source_line": 7,
+            "diff": " def adult?\n-  @age >= 18\n+  @age > 18\n end\n"
+          },
+          "test_result": {
+            "status": "alive"
+          }
+        },
+        {
+          "mutation": {
+            "id": "subject-1:mutation-2",
+            "operator_name": "Mutant::Mutator::Node::ReturnValues",
+            "source_path": "lib/person.rb",
+            "source_line": 7,
+            "diff": " def adult?\n-  @age >= 18\n+  nil\n end\n"
+          },
+          "test_result": {
+            "status": "killed"
+          }
+        }
+      ]
+    }
+  ]
+}
