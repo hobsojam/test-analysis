@@ -49,9 +49,12 @@ mutant run --use rspec --usage opensource --require ./lib 'Person*'
 tqa analyze --coverage coverage.xml --mutant .mutant/results
 ```
 
-TQA reads Mutant session JSON files directly. Surviving `alive` mutations are
-shown with the Mutant operator, subject name, and compact diff details when
-they are present in the session file.
+TQA reads Mutant session JSON files directly and supports two session formats:
+
+- **Original format** — results carry a nested `test_result` dict with a `status` field (`alive`, `killed`, etc.).
+- **Newer format** — results carry a `mutation_result` dict and a `criteria_result` dict; TQA maps `test_result`, `timeout`, and `process_abort` fields to the appropriate status automatically.
+
+Surviving mutations are shown with the operator name, subject, and a compact diff summary when present. If Mutant runs inside a Docker container or CI environment that mounts source under `/work/`, TQA strips the `/work/` prefix from file paths automatically so they match your project layout.
 
 ### JavaScript / TypeScript (Jest/Vitest + Stryker)
 
