@@ -157,14 +157,26 @@ def test_parse_mutmut():
 
 
 def test_parse_mutmut_description_is_none():
-    # mutmut JUnit XML carries no mutation-type info; description must be None
-    # so the recommendation engine falls back correctly instead of silently
-    # using a placeholder that prevents any keyword rules from firing.
+    # Without diff text, mutmut descriptions stay empty so recommendations
+    # fall back instead of using a misleading placeholder.
     component = ComponentReport()
     parse_mutmut("tests/sample_mutmut.xml", component)
     for line_data in component.files["main.py"].lines.values():
         for mutant in line_data.mutants:
             assert mutant.description is None
+
+
+def test_parse_mutmut_infers_descriptions_from_survived_diffs():
+    component = ComponentReport()
+    parse_mutmut("tests/sample_mutmut_with_diffs.xml", component)
+    main_report = component.files["main.py"]
+
+    assert main_report.lines[5].mutants[0].description is None
+    assert main_report.lines[10].mutants[0].description == "ArithmeticOperator"
+    assert main_report.lines[20].mutants[0].description == "ComparisonOperator"
+    assert main_report.lines[30].mutants[0].description == "BooleanLiteral"
+    assert main_report.lines[40].mutants[0].description == "ReturnValue"
+    assert main_report.lines[50].mutants[0].description == "VoidMethodCall"
 
 def test_parse_mutmut_line_numbers():
     component = ComponentReport()

@@ -2,6 +2,7 @@ import lxml.etree as ET
 import re
 from tqa.models import ComponentReport, FileReport, LineData, MutantData
 from tqa.parsers.base import Parser
+from tqa.parsers.mutmut_diff import infer_mutmut_description
 from tqa.parsers.registry import register_parser
 
 
@@ -34,8 +35,11 @@ class MutmutParser(Parser):
 
             line = int(line_str)
             status = "Killed"
-            if testcase.xpath("./failure") or testcase.xpath("./error"):
+            failure_nodes = testcase.xpath("./failure") or testcase.xpath("./error")
+            if failure_nodes:
                 status = "Survived"
+            failure_text = failure_nodes[0].text if failure_nodes else None
+            description = infer_mutmut_description(failure_text)
 
             if file_path not in report.files:
                 report.files[file_path] = FileReport(file_path=file_path)
@@ -50,9 +54,7 @@ class MutmutParser(Parser):
                     id=str(mutant_id),
                     status=status,
                     line=line,
-                    # mutmut JUnit XML does not include mutation-type info, so
-                    # description is left None; recommendation rules cannot fire.
-                    description=None,
+                    description=description,
                 )
             )
 
