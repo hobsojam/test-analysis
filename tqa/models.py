@@ -57,9 +57,10 @@ class ComponentReport(BaseModel):
 
     @property
     def total_test_strength(self) -> float:
-        if not self.files:
+        mutation_files = [f for f in self.files.values() if f.has_mutation_data]
+        if not mutation_files:
             return 0.0
-        return sum(f.test_strength for f in self.files.values()) / len(self.files)
+        return sum(f.test_strength for f in mutation_files) / len(mutation_files)
 
     def reconcile_paths(self) -> None:
         """Merge file entries that differ only by a path prefix.
@@ -111,9 +112,14 @@ class ProjectReport(BaseModel):
     def total_test_strength(self) -> float:
         if not self.components:
             return 0.0
-        total_files = sum(len(c.files) for c in self.components.values())
-        if total_files == 0:
+        mutation_counts = {
+            name: sum(1 for f in c.files.values() if f.has_mutation_data)
+            for name, c in self.components.items()
+        }
+        total = sum(mutation_counts.values())
+        if total == 0:
             return 0.0
         return sum(
-            c.total_test_strength * len(c.files) for c in self.components.values()
-        ) / total_files
+            c.total_test_strength * mutation_counts[name]
+            for name, c in self.components.items()
+        ) / total
