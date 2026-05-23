@@ -1,5 +1,4 @@
 import json
-import pytest
 from tqa.models import ComponentReport
 from tqa.parsers.mutant import (
     _description,
