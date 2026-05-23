@@ -8,6 +8,7 @@ from rich.console import Console
 from tqa.engine import AnalysisEngine
 from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary, print_github_annotations
+from tqa.formatters.sonarcloud import SONARCLOUD_REPORT_PATH, write_sonarcloud_report
 
 
 @click.group()
@@ -23,7 +24,7 @@ def main() -> None:
 @click.option("--stryker", "stryker_path", type=click.Path(), help="Path to Stryker JSON")
 @click.option("--pit", "pit_path", type=click.Path(), help="Path to PIT mutations.xml")
 @click.option("--mutmut", "mutmut_path", type=click.Path(), help="Path to mutmut junit.xml")
-@click.option("--format", type=click.Choice(["console", "github"]), default="console")
+@click.option("--format", type=click.Choice(["console", "github", "sonarcloud"]), default="console")
 @click.option("--fail-under", type=float, default=0.0, help="Fail if total TSI is below this threshold")
 @click.option("--export-svg", "export_svg", type=click.Path(), default=None, help="Export console output as SVG")
 def analyze(
@@ -61,7 +62,10 @@ def analyze(
             console.print("\n[bold]Suggested Setup:[/]")
             console.print("1. Coverage: Use `pytest-cov --cov-report=xml` (Python) or `nyc report --reporter=cobertura` (JS)")
             console.print("2. Mutation: Use `stryker run` (JS), `pitest` (Java), or `mutmut run` (Python)")
-        elif format == "github":
+        elif format in ("github", "sonarcloud"):
+            if format == "sonarcloud":
+                write_sonarcloud_report(report)
+                click.echo(f"Wrote {SONARCLOUD_REPORT_PATH}", err=True)
             click.echo("# 🛡️ TQA: Quality Unknown")
             click.echo("\nNo coverage or mutation reports were detected. Quality metrics cannot be calculated.")
             click.echo("\n### 🛠️ Suggested Setup")
@@ -79,6 +83,10 @@ def analyze(
     elif format == "github":
         click.echo(generate_markdown_summary(report))
         print_github_annotations(report)
+    elif format == "sonarcloud":
+        write_sonarcloud_report(report)
+        click.echo(f"Wrote {SONARCLOUD_REPORT_PATH}", err=True)
+        click.echo(generate_markdown_summary(report))
 
     if report.total_test_strength * 100 < fail_under:
         click.echo(f"\nError: Test Strength {report.total_test_strength * 100:.1f}% is below threshold {fail_under}%", err=True)

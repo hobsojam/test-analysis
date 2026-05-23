@@ -96,7 +96,7 @@ tqa analyze [OPTIONS]
   --stryker PATH      Stryker JSON report
   --mutmut PATH       mutmut JUnit XML (mutmut junitxml)
   --pit PATH          PIT mutations.xml
-  --format [console|github]  Output format (default: console)
+  --format [console|github|sonarcloud]  Output format (default: console)
   --fail-under FLOAT  Exit 1 if TSI is below this percentage
   --export-svg PATH   Save the console output as an SVG image
 ```
@@ -366,6 +366,21 @@ The report structure is:
 - Critical gaps table (if any) at the bottom
 
 Suggestions are deterministic heuristics based on the mutator name and optional source-line context. They are meant to point at the missing test signal, not to guarantee a complete test case.
+
+### SonarCloud (`--format sonarcloud`)
+
+Produces the same Markdown summary as `--format github` and writes a
+`sonar-generic-issues.json` file for SonarCloud's generic external issue
+import. Configure SonarCloud to read it with:
+
+```properties
+sonar.externalIssuesReportPaths=sonar-generic-issues.json
+```
+
+Each surviving mutant is exported as a line-level external issue using the
+`tqa` engine id and `surviving-mutant` rule id. TQA keeps the JSON focused on
+machine-ingestible findings; the Markdown summary remains the human-readable
+report.
 
 #### Writing to the job summary
 
