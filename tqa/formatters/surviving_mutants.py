@@ -28,6 +28,7 @@ def mutant_count_label(finding: dict) -> str:
 
 
 def mutator_descriptions(finding: dict) -> str:
+    max_descriptions = 3
     descriptions = []
     for mutant in finding["mutants"]:
         description = mutant.get("description")
@@ -35,7 +36,9 @@ def mutator_descriptions(finding: dict) -> str:
             descriptions.append(description)
     if not descriptions:
         return "N/A"
-    return ", ".join(descriptions)
+    visible = descriptions[:max_descriptions]
+    suffix = "" if len(descriptions) <= max_descriptions else f", +{len(descriptions) - max_descriptions} more"
+    return ", ".join(visible) + suffix
 
 
 def suggestion_label(finding: dict) -> str:

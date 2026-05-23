@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import re
 from typing import Any, Iterable
 
 from tqa.models import ComponentReport, FileReport, LineData, MutantData
@@ -23,6 +24,7 @@ class MutantParser(Parser):
                 if mutant is None:
                     continue
                 file_path, line, mutant_data = mutant
+                file_path = _normalize_path(file_path)
                 if file_path not in report.files:
                     report.files[file_path] = FileReport(file_path=file_path)
                 file_report = report.files[file_path]
@@ -38,6 +40,13 @@ def _session_paths(path: str) -> Iterable[Path]:
         yield from sorted(p for p in root.glob("*.json") if p.is_file())
     else:
         yield root
+
+
+def _normalize_path(path: str) -> str:
+    normalized = path.replace("\\", "/")
+    if normalized.startswith("/work/"):
+        return normalized.removeprefix("/work/")
+    return normalized
 
 
 def _mutation_results(
@@ -57,6 +66,8 @@ def _mutation_results(
 
 
 def _looks_like_mutation_result(data: dict[str, Any]) -> bool:
+    if isinstance(data.get("mutation_result"), dict) and isinstance(data.get("criteria_result"), dict):
+        return True
     if "mutation" in data or "mutant" in data:
         return _status_from(data) is not None
     keys = set(data)
@@ -70,7 +81,12 @@ def _extract_mutant(
     result: dict[str, Any],
     parents: tuple[dict[str, Any], ...],
 ) -> tuple[str, int, MutantData] | None:
-    mutation = _first_dict(result.get("mutation"), result.get("mutant"), result)
+    mutation = _first_dict(
+        result.get("mutation_result"),
+        result.get("mutation"),
+        result.get("mutant"),
+        result,
+    )
     contexts = (mutation, result, *reversed(parents))
     file_path = _first_string(
         contexts,
@@ -93,6 +109,7 @@ def _extract_mutant(
         "id",
         "index",
         "uuid",
+        "mutation_identification",
     ) or f"mutant-{file_path}:{line}:{raw_status}"
     description = _description(mutation, result, parents)
 
@@ -132,17 +149,46 @@ def _first_int(contexts: Iterable[dict[str, Any]], *keys: str) -> int | None:
                 return value
             if isinstance(value, str) and value.isdigit():
                 return int(value)
-        location = context.get("location")
-        if isinstance(location, dict):
-            start = location.get("start")
-            if isinstance(start, dict):
-                value = start.get("line")
-                if isinstance(value, int):
-                    return value
+        result = _line_from_location(context) or _line_from_identification(context)
+        if result is not None:
+            return result
     return None
 
 
+def _line_from_location(context: dict[str, Any]) -> int | None:
+    location = context.get("location")
+    if not isinstance(location, dict):
+        return None
+    start = location.get("start")
+    if not isinstance(start, dict):
+        return None
+    value = start.get("line")
+    return value if isinstance(value, int) else None
+
+
+def _line_from_identification(context: dict[str, Any]) -> int | None:
+    identification = context.get("mutation_identification") or context.get("identification")
+    if not isinstance(identification, str):
+        return None
+    match = re.search(r":(\d+):[^:]+$", identification)
+    return int(match.group(1)) if match else None
+
+
+def _status_from_criteria(criteria: dict[str, Any]) -> str:
+    if criteria.get("test_result"):
+        return "killed"
+    if criteria.get("timeout"):
+        return "timeout"
+    if criteria.get("process_abort"):
+        return "error"
+    return "survived"
+
+
 def _status_from(result: dict[str, Any]) -> str | None:
+    criteria = result.get("criteria_result")
+    if isinstance(criteria, dict):
+        return _status_from_criteria(criteria)
+
     for key in ("status", "result", "state", "outcome"):
         value = result.get(key)
         if isinstance(value, str):
@@ -177,6 +223,7 @@ def _description(
         "operator",
         "mutator",
         "mutator_name",
+        "mutation_type",
         "name",
     )
     if operator:
@@ -186,7 +233,9 @@ def _description(
     if subject and subject not in parts:
         parts.append(subject)
 
-    diff_summary = _diff_summary(_first_string((mutation, result), "diff", "source_diff"))
+    diff_summary = _diff_summary(
+        _first_string((mutation, result), "diff", "source_diff", "mutation_diff")
+    )
     if diff_summary:
         parts.append(diff_summary)
 
