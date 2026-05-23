@@ -115,7 +115,7 @@ jobs:
             });
             const existing = comments.findLast(c =>
               c.user.login === 'github-actions[bot]' &&
-              c.body.startsWith('# TQA Report Summary')
+              c.body.startsWith('## TQA Report Summary')
             );
             if (existing) {
               await github.rest.issues.updateComment({
