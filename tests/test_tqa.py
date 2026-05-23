@@ -79,20 +79,34 @@ def test_total_test_strength_empty_report():
 def test_project_has_mutation_data_false_when_empty():
     assert ProjectReport().has_mutation_data is False
 
-def test_project_total_strength_weighted_by_file_count():
+def test_project_total_strength_weighted_by_mutation_file_count():
     report = ProjectReport()
-    # backend: 1 file, TSI 1.0
+    # backend: 1 file with mutation data, TSI 1.0
     backend = ComponentReport()
     backend.files["a.py"] = _make_file(killed=1, survived=0, covered=True)
     report.components["backend"] = backend
-    # frontend: 3 files, all TSI 0.0 (no mutants, no covered lines)
+    # frontend: 3 files with no mutation data — excluded from aggregate
     frontend = ComponentReport()
     for name in ("a.js", "b.js", "c.js"):
         frontend.files[name] = FileReport(file_path=name)
         frontend.files[name].lines[1] = LineData(line_number=1, is_covered=False)
     report.components["frontend"] = frontend
-    # weighted: (1.0 * 1 + 0.0 * 3) / 4 = 0.25
-    assert report.total_test_strength == pytest.approx(0.25)
+    # only the 1 backend mutation file counts → 1.0
+    assert report.total_test_strength == pytest.approx(1.0)
+
+
+def test_project_total_strength_excludes_coverage_only_files():
+    """Files with coverage but no mutation data must not inflate the aggregate."""
+    report = ProjectReport()
+    comp = ComponentReport()
+    # one file with real mutation data: 80% kill rate
+    comp.files["tested.py"] = _make_file(killed=4, survived=1, covered=True)
+    # two files that only have coverage data (no mutants) — would return TSI 1.0 each
+    for name in ("a.py", "b.py"):
+        comp.files[name] = FileReport(file_path=name)
+        comp.files[name].lines[1] = LineData(line_number=1, is_covered=True)
+    report.components["default"] = comp
+    assert report.total_test_strength == pytest.approx(0.8)
 
 
 # --- Parser: cobertura ---
