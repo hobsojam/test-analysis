@@ -3,8 +3,20 @@ name: CI/CD Pipeline
 on:
   pull_request:
     branches: [ main ]
+    paths:
+      - 'tqa/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'tqa.toml'
+      - '.github/workflows/tqa.yml'
   push:
     branches: [ main ]
+    paths:
+      - 'tqa/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'tqa.toml'
+      - '.github/workflows/tqa.yml'
 
 permissions:
   contents: read
