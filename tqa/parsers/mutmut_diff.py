@@ -40,8 +40,8 @@ def infer_mutmut_description(diff_text: str | None) -> str | None:
 
 
 def _changed_lines(diff_text: str) -> tuple[list[str], list[str]]:
-    removed = []
-    added = []
+    removed: list[str] = []
+    added: list[str] = []
     for raw_line in diff_text.splitlines():
         if len(removed) + len(added) >= MAX_DIFF_LINES:
             break
