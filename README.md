@@ -372,6 +372,16 @@ The image below is generated automatically from this project's own CI run on eve
 | Weak | 50–79% | Tests run the code but miss many mutations |
 | Blind | < 50% | Tests cover lines but verify almost nothing |
 
+**What TSI measures — and what it doesn't**
+
+TSI is calculated only over lines that your coverage report marks as covered. Uncovered lines are excluded from the score entirely — they do not count as 0%.
+
+This is intentional. TSI answers the question *"how effective are the tests you have?"*, not *"how completely is your project tested?"*. A project with 40% line coverage and a TSI of 90% has excellent tests for the code it exercises, but large untested areas — two different problems that call for different fixes.
+
+Because of this, a high TSI is not a signal that you can stop adding tests. It means the tests you have are doing their job well. To understand how much of your codebase still lacks any tests at all, read TSI alongside your coverage report: coverage tells you *where* tests are absent; TSI tells you *whether* the tests that exist are meaningful.
+
+Surviving mutants on uncovered lines are labelled **Uncovered** in the output. They represent a harder gap — no test runs that code at all — so the recommended action is to add coverage first, then use TSI to verify the new tests actually assert behaviour.
+
 ### GitHub (`--format github`)
 
 Produces a Markdown report suitable for a PR comment or a GitHub Actions job summary, plus `::warning` annotations for lines with 100% coverage but 0% mutants killed.
