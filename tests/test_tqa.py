@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from click.testing import CliRunner
 from tqa.cli import main
@@ -9,6 +11,7 @@ from tqa.parsers.cobertura import parse_cobertura, CoberturaParser
 from tqa.parsers.stryker import parse_stryker, StrykerParser
 from tqa.parsers.pit import parse_pit, PitParser
 from tqa.parsers.mutmut import parse_mutmut, MutmutParser
+from tqa.parsers.mutant import parse_mutant, MutantParser
 from tqa.parsers.lcov import parse_lcov, LcovParser
 from tqa.parsers.registry import registry
 from tqa.parsers.base import Parser
@@ -198,6 +201,45 @@ def test_parse_mutmut_line_numbers():
     main_report = component.files["main.py"]
     assert 5 in main_report.lines
     assert 10 in main_report.lines
+
+
+# --- Parser: mutant ---
+
+def test_parse_mutant_session_json():
+    component = ComponentReport()
+    parse_mutant("tests/sample_mutant_session.json", component)
+
+    assert "lib/person.rb" in component.files
+    line = component.files["lib/person.rb"].lines[7]
+    assert len(line.mutants) == 2
+    assert line.mutants[0].status == "Survived"
+    assert line.mutants[1].status == "Killed"
+
+
+def test_parse_mutant_session_json_preserves_useful_survivor_details():
+    component = ComponentReport()
+    parse_mutant("tests/sample_mutant_session.json", component)
+
+    mutant = component.files["lib/person.rb"].lines[7].mutants[0]
+    assert mutant.description == (
+        "Mutant::Mutator::Node::Gte | Person#adult? | -  @age >= 18 +  @age > 18"
+    )
+
+
+def test_parse_mutant_results_directory(tmp_path):
+    results_dir = tmp_path / ".mutant" / "results"
+    results_dir.mkdir(parents=True)
+    fixture = Path("tests/sample_mutant_session.json")
+    (results_dir / "session.json").write_text(
+        fixture.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    component = ComponentReport()
+    parse_mutant(str(results_dir), component)
+
+    assert "lib/person.rb" in component.files
+    assert len(component.files["lib/person.rb"].lines[7].mutants) == 2
 
 
 # --- Parser: lcov ---
@@ -505,6 +547,17 @@ def test_cli_analyze_fail_under_triggers_exit():
     ])
     assert result.exit_code == 1
 
+def test_cli_analyze_with_mutant_session_json():
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "analyze",
+        "--mutant", "tests/sample_mutant_session.json",
+        "--format", "github",
+    ])
+    assert result.exit_code == 0
+    assert "lib/person.rb" in result.output
+    assert "Mutant::Mutator::Node::Gte" in result.output
+
 def test_cli_analyze_no_reports():
     runner = CliRunner()
     result = runner.invoke(main, ["analyze"])
@@ -570,7 +623,7 @@ def test_cli_warns_when_coverage_xml_has_no_files_with_mutation_data():
 # --- Parser registry ---
 
 def test_registry_contains_all_parsers():
-    for key in ("cobertura", "stryker", "pit", "mutmut", "lcov"):
+    for key in ("cobertura", "stryker", "pit", "mutmut", "mutant", "lcov"):
         assert key in registry
 
 def test_registry_returns_correct_types():
@@ -578,6 +631,7 @@ def test_registry_returns_correct_types():
     assert isinstance(registry.get("stryker"), StrykerParser)
     assert isinstance(registry.get("pit"), PitParser)
     assert isinstance(registry.get("mutmut"), MutmutParser)
+    assert isinstance(registry.get("mutant"), MutantParser)
     assert isinstance(registry.get("lcov"), LcovParser)
 
 def test_registry_parsers_implement_base():

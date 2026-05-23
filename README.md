@@ -12,6 +12,7 @@ pip install tqa
 
 ```bash
 tqa analyze --coverage coverage.xml --mutmut mutmut.xml
+tqa analyze --coverage coverage.xml --mutant .mutant/results
 ```
 
 ## Generating the input reports
@@ -36,6 +37,21 @@ the unified diff embedded in the JUnit failure text. This is a conservative
 heuristic used only to improve test recommendations. If the diff is missing
 or ambiguous, TQA leaves the mutation description empty and uses the generic
 recommendation.
+
+### Ruby (Mutant)
+
+```bash
+# Mutation — Mutant writes native session JSON to .mutant/results/
+mutant run --use rspec --usage opensource --require ./lib 'Person*'
+```
+
+```bash
+tqa analyze --coverage coverage.xml --mutant .mutant/results
+```
+
+TQA reads Mutant session JSON files directly. Surviving `alive` mutations are
+shown with the Mutant operator, subject name, and compact diff details when
+they are present in the session file.
 
 ### JavaScript / TypeScript (Jest/Vitest + Stryker)
 
@@ -78,6 +94,7 @@ tqa analyze \
 | :--- | :--- |
 | pytest-cov | `coverage.xml` (configure with `--cov-report=xml:<path>`) |
 | mutmut | `.mutmut-cache` (DB); export with `mutmut junitxml > mutmut.xml` |
+| Mutant | `.mutant/results` session JSON files |
 | Jest | `coverage/lcov.info` |
 | Vitest | `coverage/lcov.info` (requires `@vitest/coverage-v8` and `reporter: ['lcov']` in config) |
 | NYC | `coverage/lcov.info` |
@@ -95,6 +112,7 @@ tqa analyze [OPTIONS]
   --lcov PATH         lcov.info (Jest, Vitest, NYC)
   --stryker PATH      Stryker JSON report
   --mutmut PATH       mutmut JUnit XML (mutmut junitxml)
+  --mutant PATH       Mutant session JSON file or .mutant/results directory
   --pit PATH          PIT mutations.xml
   --format [console|github|sonarcloud]  Output format (default: console)
   --fail-under FLOAT  Exit 1 if TSI is below this percentage
