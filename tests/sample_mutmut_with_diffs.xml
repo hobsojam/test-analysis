@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<testsuites disabled="0" errors="0" failures="5" tests="6" time="0.0">
+  <testsuite disabled="0" errors="0" failures="5" name="mutmut" skipped="0" tests="6" time="0">
+    <testcase name="Mutant #1" file="main.py" line="5"/>
+    <testcase name="Mutant #2" file="main.py" line="10">
+      <failure type="failure" message="bad_survived"><![CDATA[
+--- main.py
++++ main.py (copy)
+@@ -10,1 +10,1 @@
+-    return a + b
++    return a - b
+]]></failure>
+    </testcase>
+    <testcase name="Mutant #3" file="main.py" line="20">
+      <failure type="failure" message="bad_survived"><![CDATA[
+--- main.py
++++ main.py (copy)
+@@ -20,1 +20,1 @@
+-    return user == owner
++    return user != owner
+]]></failure>
+    </testcase>
+    <testcase name="Mutant #4" file="main.py" line="30">
+      <failure type="failure" message="bad_survived"><![CDATA[
+--- main.py
++++ main.py (copy)
+@@ -30,1 +30,1 @@
+-    return True
++    return False
+]]></failure>
+    </testcase>
+    <testcase name="Mutant #5" file="main.py" line="40">
+      <failure type="failure" message="bad_survived"><![CDATA[
+--- main.py
++++ main.py (copy)
+@@ -40,1 +40,1 @@
+-    return result
++    return None
+]]></failure>
+    </testcase>
+    <testcase name="Mutant #6" file="main.py" line="50">
+      <failure type="failure" message="bad_survived"><![CDATA[
+--- main.py
++++ main.py (copy)
+@@ -50,1 +50,0 @@
+-    service.notify(user)
+]]></failure>
+    </testcase>
+  </testsuite>
+</testsuites>

@@ -31,6 +31,12 @@ mutmut junitxml > mutmut.xml   # export to mutmut.xml
 tqa analyze --coverage coverage.xml --mutmut mutmut.xml
 ```
 
+For survived mutmut mutants, TQA may infer a broad mutation category from
+the unified diff embedded in the JUnit failure text. This is a conservative
+heuristic used only to improve test recommendations. If the diff is missing
+or ambiguous, TQA leaves the mutation description empty and uses the generic
+recommendation.
+
 ### JavaScript / TypeScript (Jest/Vitest + Stryker)
 
 ```bash
