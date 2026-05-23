@@ -149,31 +149,45 @@ def _first_int(contexts: Iterable[dict[str, Any]], *keys: str) -> int | None:
                 return value
             if isinstance(value, str) and value.isdigit():
                 return int(value)
-        location = context.get("location")
-        if isinstance(location, dict):
-            start = location.get("start")
-            if isinstance(start, dict):
-                value = start.get("line")
-                if isinstance(value, int):
-                    return value
-        identification = context.get("mutation_identification") or context.get("identification")
-        if isinstance(identification, str):
-            match = re.search(r":(\d+):[^:]+$", identification)
-            if match:
-                return int(match.group(1))
+        result = _line_from_location(context) or _line_from_identification(context)
+        if result is not None:
+            return result
     return None
+
+
+def _line_from_location(context: dict[str, Any]) -> int | None:
+    location = context.get("location")
+    if not isinstance(location, dict):
+        return None
+    start = location.get("start")
+    if not isinstance(start, dict):
+        return None
+    value = start.get("line")
+    return value if isinstance(value, int) else None
+
+
+def _line_from_identification(context: dict[str, Any]) -> int | None:
+    identification = context.get("mutation_identification") or context.get("identification")
+    if not isinstance(identification, str):
+        return None
+    match = re.search(r":(\d+):[^:]+$", identification)
+    return int(match.group(1)) if match else None
+
+
+def _status_from_criteria(criteria: dict[str, Any]) -> str:
+    if criteria.get("test_result"):
+        return "killed"
+    if criteria.get("timeout"):
+        return "timeout"
+    if criteria.get("process_abort"):
+        return "error"
+    return "survived"
 
 
 def _status_from(result: dict[str, Any]) -> str | None:
     criteria = result.get("criteria_result")
     if isinstance(criteria, dict):
-        if criteria.get("test_result"):
-            return "killed"
-        if criteria.get("timeout"):
-            return "timeout"
-        if criteria.get("process_abort"):
-            return "error"
-        return "survived"
+        return _status_from_criteria(criteria)
 
     for key in ("status", "result", "state", "outcome"):
         value = result.get(key)
