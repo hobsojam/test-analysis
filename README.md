@@ -285,17 +285,19 @@ stryker = "reports/client/mutation.json"
     "
 
 - name: Run mutation tests
+  id: mutmut
   run: mutmut run
   continue-on-error: true   # mutmut exits non-zero when mutants survive
 
 - name: Export mutation results
-  run: mutmut junitxml > mutmut.xml   # run even if the step above failed
+  if: steps.mutmut.outcome == 'success'
+  run: mutmut junitxml > mutmut.xml
 
 - name: Run TQA
   run: |
     tqa analyze \
       --coverage coverage.xml \
-      --mutmut mutmut.xml \
+      $([ -f mutmut.xml ] && echo '--mutmut mutmut.xml') \
       --format github > tqa-summary.md
 
 - name: Comment on PR
@@ -315,6 +317,8 @@ stryker = "reports/client/mutation.json"
 ```
 
 The comment step updates the existing TQA comment in place rather than appending a new one on every push.
+
+**Why the export step is conditional**: `mutmut run` exits non-zero whenever any mutant survives (the normal case), so `continue-on-error: true` is required. However, if mutmut crashes entirely — OOM, timeout, missing source files — the exit code is still non-zero but the `.mutmut-cache` database is absent or corrupt. Running `mutmut junitxml` in that state produces an empty or invalid XML file, which TQA would then read as "zero mutants tested", silently omitting the mutation column from the report. Gating the export on `steps.mutmut.outcome == 'success'` ensures the XML is only written when mutmut completed a real run. The `[ -f mutmut.xml ]` check in the TQA step then omits `--mutmut` entirely when the file is absent, so the report shows coverage data only rather than misleading zero-mutation metrics.
 
 ### Multi-job example (JavaScript — tests and TQA in separate jobs)
 
@@ -354,6 +358,27 @@ jobs:
 ```
 
 Using `find` avoids depending on the exact directory structure that `download-artifact` produces.
+
+**When using `--config tqa.toml` and mutations might not run**: a static committed `tqa.toml` lists mutation sources unconditionally, so TQA will error or report misleading zero-mutation data when the files are absent. Generate a runtime config instead:
+
+```yaml
+- name: Generate runtime TQA config
+  run: |
+    {
+      echo '[components.python]'
+      echo 'cobertura = "coverage.xml"'
+      [ -f mutmut.xml ] && echo 'mutmut = "mutmut.xml"'
+      echo ''
+      echo '[components.frontend]'
+      echo 'lcov = "frontend/coverage/lcov.info"'
+      [ -f frontend/reports/mutation/mutation.json ] && echo 'stryker = "frontend/reports/mutation/mutation.json"'
+    } > tqa-runtime.toml
+
+- name: Run TQA
+  run: tqa analyze --config tqa-runtime.toml --format sonarcloud >> $GITHUB_STEP_SUMMARY
+```
+
+The shell `[ -f <path> ]` test is POSIX-portable and works on every GitHub-hosted runner. Only sources whose artifact files are present on disk are included; components that did not produce output are omitted from the report rather than shown as zero.
 
 Use `--fail-under 80` on the `tqa analyze` line to enforce a minimum TSI quality gate.
 
