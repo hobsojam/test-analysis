@@ -21,7 +21,9 @@ def clear_github_actions_env(monkeypatch):
     monkeypatch.delenv("GITHUB_SHA", raising=False)
 
 
-def _report_with_lines(lines: list[tuple[str, int, bool, list[tuple[str, str, str | None]]]]) -> ProjectReport:
+def _report_with_lines(
+    lines: list[tuple[str, int, bool, list[tuple[str, str, str | None]]]],
+) -> ProjectReport:
     report = ProjectReport()
     component = ComponentReport()
 
@@ -47,24 +49,26 @@ def _report_with_lines(lines: list[tuple[str, int, bool, list[tuple[str, str, st
 
 
 def test_github_formatter_reports_surviving_mutants_with_line_counts_and_mutators():
-    report = _report_with_lines([
-        (
-            "src/api.py",
-            12,
-            True,
-            [
-                ("1", "Killed", "ArithmeticOperator"),
-                ("2", "Survived", "ConditionalBoundary"),
-                ("3", "Survived", "ConditionalBoundary"),
-            ],
-        ),
-        (
-            "src/model.py",
-            3,
-            True,
-            [("4", "Survived", "ReturnValue")],
-        ),
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/api.py",
+                12,
+                True,
+                [
+                    ("1", "Killed", "ArithmeticOperator"),
+                    ("2", "Survived", "ConditionalBoundary"),
+                    ("3", "Survived", "ConditionalBoundary"),
+                ],
+            ),
+            (
+                "src/model.py",
+                3,
+                True,
+                [("4", "Survived", "ReturnValue")],
+            ),
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
 
@@ -81,41 +85,47 @@ def test_github_formatter_reports_surviving_mutants_with_line_counts_and_mutator
 
 
 def test_github_formatter_orders_fully_survived_before_partial_survived():
-    report = _report_with_lines([
-        (
-            "src/partial.py",
-            20,
-            True,
-            [
-                ("1", "Killed", "MathMutator"),
-                ("2", "Survived", "MathMutator"),
-                ("3", "Survived", "MathMutator"),
-            ],
-        ),
-        (
-            "src/full.py",
-            10,
-            True,
-            [("4", "Survived", "ReturnValue")],
-        ),
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/partial.py",
+                20,
+                True,
+                [
+                    ("1", "Killed", "MathMutator"),
+                    ("2", "Survived", "MathMutator"),
+                    ("3", "Survived", "MathMutator"),
+                ],
+            ),
+            (
+                "src/full.py",
+                10,
+                True,
+                [("4", "Survived", "ReturnValue")],
+            ),
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
     surviving_section = markdown.split("**Surviving Mutants**", 1)[1]
 
-    assert surviving_section.index("`src/full.py`") < surviving_section.index("`src/partial.py`")
+    assert surviving_section.index("`src/full.py`") < surviving_section.index(
+        "`src/partial.py`"
+    )
 
 
 def test_github_formatter_limits_surviving_mutants_to_top_10():
-    report = _report_with_lines([
-        (
-            f"src/file_{i}.py",
-            i,
-            True,
-            [(str(i), "Survived", f"Mutator{i}")],
-        )
-        for i in range(1, 12)
-    ])
+    report = _report_with_lines(
+        [
+            (
+                f"src/file_{i}.py",
+                i,
+                True,
+                [(str(i), "Survived", f"Mutator{i}")],
+            )
+            for i in range(1, 12)
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
 
@@ -124,17 +134,19 @@ def test_github_formatter_limits_surviving_mutants_to_top_10():
 
 
 def test_console_formatter_reports_surviving_mutants(capsys):
-    report = _report_with_lines([
-        (
-            "src/api.py",
-            12,
-            True,
-            [
-                ("1", "Killed", "ArithmeticOperator"),
-                ("2", "Survived", "ConditionalBoundary"),
-            ],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/api.py",
+                12,
+                True,
+                [
+                    ("1", "Killed", "ArithmeticOperator"),
+                    ("2", "Survived", "ConditionalBoundary"),
+                ],
+            )
+        ]
+    )
 
     print_summary_table(report)
 
@@ -148,15 +160,18 @@ def test_console_formatter_reports_surviving_mutants(capsys):
 
 # --- GitHub formatter: surviving mutant section details ---
 
+
 def test_github_formatter_omits_section_when_no_surviving_mutants():
-    report = _report_with_lines([
-        (
-            "src/clean.py",
-            5,
-            True,
-            [("1", "Killed", "ArithmeticOperator")],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/clean.py",
+                5,
+                True,
+                [("1", "Killed", "ArithmeticOperator")],
+            )
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
 
@@ -164,14 +179,16 @@ def test_github_formatter_omits_section_when_no_surviving_mutants():
 
 
 def test_github_formatter_shows_uncovered_label_for_uncovered_lines():
-    report = _report_with_lines([
-        (
-            "src/uncovered.py",
-            7,
-            False,
-            [("1", "Survived", "ReturnValue")],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/uncovered.py",
+                7,
+                False,
+                [("1", "Survived", "ReturnValue")],
+            )
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
 
@@ -179,14 +196,16 @@ def test_github_formatter_shows_uncovered_label_for_uncovered_lines():
 
 
 def test_github_formatter_shows_na_when_no_mutator_descriptions():
-    report = _report_with_lines([
-        (
-            "src/nodesc.py",
-            3,
-            True,
-            [("1", "Survived", None)],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/nodesc.py",
+                3,
+                True,
+                [("1", "Survived", None)],
+            )
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
 
@@ -195,41 +214,47 @@ def test_github_formatter_shows_na_when_no_mutator_descriptions():
 
 
 def test_github_formatter_covered_before_uncovered_in_surviving_section():
-    report = _report_with_lines([
-        (
-            "src/uncovered.py",
-            1,
-            False,
-            [("1", "Survived", "ReturnValue")],
-        ),
-        (
-            "src/covered.py",
-            1,
-            True,
-            [("2", "Survived", "ReturnValue")],
-        ),
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/uncovered.py",
+                1,
+                False,
+                [("1", "Survived", "ReturnValue")],
+            ),
+            (
+                "src/covered.py",
+                1,
+                True,
+                [("2", "Survived", "ReturnValue")],
+            ),
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
     surviving_section = markdown.split("**Surviving Mutants**", 1)[1]
 
-    assert surviving_section.index("`src/covered.py`") < surviving_section.index("`src/uncovered.py`")
+    assert surviving_section.index("`src/covered.py`") < surviving_section.index(
+        "`src/uncovered.py`"
+    )
 
 
 def test_github_formatter_truncates_many_mutator_descriptions():
-    report = _report_with_lines([
-        (
-            "src/multi.py",
-            1,
-            True,
-            [
-                ("1", "Survived", "MutatorA"),
-                ("2", "Survived", "MutatorB"),
-                ("3", "Survived", "MutatorC"),
-                ("4", "Survived", "MutatorD"),
-            ],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/multi.py",
+                1,
+                True,
+                [
+                    ("1", "Survived", "MutatorA"),
+                    ("2", "Survived", "MutatorB"),
+                    ("3", "Survived", "MutatorC"),
+                    ("4", "Survived", "MutatorD"),
+                ],
+            )
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
 
@@ -237,17 +262,19 @@ def test_github_formatter_truncates_many_mutator_descriptions():
 
 
 def test_github_formatter_deduplicates_mutator_descriptions():
-    report = _report_with_lines([
-        (
-            "src/dup.py",
-            1,
-            True,
-            [
-                ("1", "Survived", "ConditionalBoundary"),
-                ("2", "Survived", "ConditionalBoundary"),
-            ],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/dup.py",
+                1,
+                True,
+                [
+                    ("1", "Survived", "ConditionalBoundary"),
+                    ("2", "Survived", "ConditionalBoundary"),
+                ],
+            )
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
 
@@ -257,32 +284,37 @@ def test_github_formatter_deduplicates_mutator_descriptions():
 
 
 def test_github_formatter_surviving_section_ordered_by_most_survived_first():
-    report = _report_with_lines([
-        (
-            "src/few.py",
-            1,
-            True,
-            [("1", "Survived", "X")],
-        ),
-        (
-            "src/many.py",
-            1,
-            True,
-            [
-                ("2", "Survived", "X"),
-                ("3", "Survived", "X"),
-                ("4", "Survived", "X"),
-            ],
-        ),
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/few.py",
+                1,
+                True,
+                [("1", "Survived", "X")],
+            ),
+            (
+                "src/many.py",
+                1,
+                True,
+                [
+                    ("2", "Survived", "X"),
+                    ("3", "Survived", "X"),
+                    ("4", "Survived", "X"),
+                ],
+            ),
+        ]
+    )
 
     markdown = generate_markdown_summary(report)
     surviving_section = markdown.split("**Surviving Mutants**", 1)[1]
 
-    assert surviving_section.index("`src/many.py`") < surviving_section.index("`src/few.py`")
+    assert surviving_section.index("`src/many.py`") < surviving_section.index(
+        "`src/few.py`"
+    )
 
 
 # --- Console formatter: surviving mutant section ---
+
 
 def _capture_console_output(report: ProjectReport) -> str:
     buf = StringIO()
@@ -292,14 +324,16 @@ def _capture_console_output(report: ProjectReport) -> str:
 
 
 def test_console_formatter_omits_surviving_section_when_all_killed():
-    report = _report_with_lines([
-        (
-            "src/clean.py",
-            5,
-            True,
-            [("1", "Killed", "ArithmeticOperator")],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/clean.py",
+                5,
+                True,
+                [("1", "Killed", "ArithmeticOperator")],
+            )
+        ]
+    )
 
     output = _capture_console_output(report)
 
@@ -307,14 +341,16 @@ def test_console_formatter_omits_surviving_section_when_all_killed():
 
 
 def test_console_formatter_shows_uncovered_label():
-    report = _report_with_lines([
-        (
-            "src/uncovered.py",
-            7,
-            False,
-            [("1", "Survived", "ReturnValue")],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/uncovered.py",
+                7,
+                False,
+                [("1", "Survived", "ReturnValue")],
+            )
+        ]
+    )
 
     output = _capture_console_output(report)
 
@@ -322,14 +358,16 @@ def test_console_formatter_shows_uncovered_label():
 
 
 def test_console_formatter_shows_na_when_no_mutator_descriptions():
-    report = _report_with_lines([
-        (
-            "src/nodesc.py",
-            3,
-            True,
-            [("1", "Survived", None)],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/nodesc.py",
+                3,
+                True,
+                [("1", "Survived", None)],
+            )
+        ]
+    )
 
     output = _capture_console_output(report)
 
@@ -338,15 +376,17 @@ def test_console_formatter_shows_na_when_no_mutator_descriptions():
 
 
 def test_console_formatter_limits_surviving_mutants_and_shows_count():
-    report = _report_with_lines([
-        (
-            f"src/file_{i}.py",
-            i,
-            True,
-            [(str(i), "Survived", f"Mutator{i}")],
-        )
-        for i in range(1, SURVIVING_MUTANT_LIMIT + 2)
-    ])
+    report = _report_with_lines(
+        [
+            (
+                f"src/file_{i}.py",
+                i,
+                True,
+                [(str(i), "Survived", f"Mutator{i}")],
+            )
+            for i in range(1, SURVIVING_MUTANT_LIMIT + 2)
+        ]
+    )
 
     output = _capture_console_output(report)
 
@@ -355,14 +395,16 @@ def test_console_formatter_limits_surviving_mutants_and_shows_count():
 
 
 def test_console_formatter_surviving_mutants_shows_suggestion():
-    report = _report_with_lines([
-        (
-            "src/api.py",
-            10,
-            True,
-            [("1", "Survived", "ReturnValue")],
-        )
-    ])
+    report = _report_with_lines(
+        [
+            (
+                "src/api.py",
+                10,
+                True,
+                [("1", "Survived", "ReturnValue")],
+            )
+        ]
+    )
 
     output = _capture_console_output(report)
 
@@ -370,6 +412,7 @@ def test_console_formatter_surviving_mutants_shows_suggestion():
 
 
 # --- surviving_mutants helpers ---
+
 
 def _make_finding(
     survived: int,
@@ -430,9 +473,9 @@ def test_mutator_descriptions_truncates_beyond_three():
 
 def test_sorted_surviving_findings_covered_all_survived_first():
     findings = [
-        _make_finding(1, 1, False, ["X"]),   # uncovered, all survived
-        _make_finding(1, 2, True, ["X"]),    # covered, partial survived
-        _make_finding(1, 1, True, ["X"]),    # covered, all survived
+        _make_finding(1, 1, False, ["X"]),  # uncovered, all survived
+        _make_finding(1, 2, True, ["X"]),  # covered, partial survived
+        _make_finding(1, 1, True, ["X"]),  # covered, all survived
     ]
     result = sorted_surviving_findings(findings)
     # covered all-survived first, then covered partial, then uncovered
