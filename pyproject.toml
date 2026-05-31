@@ -27,6 +27,7 @@ dev = [
     "black>=22.0.0",
     "mutmut>=2.4.0,<3.0.0",
     "mypy>=1.0.0",
+    "hypothesis>=6.0.0",
 ]
 
 [project.scripts]
