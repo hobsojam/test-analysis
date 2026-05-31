@@ -19,17 +19,22 @@ fixture health check warning.
 """
 
 import json
+import os
 import string
 import tempfile
 import textwrap
-import os
 
 import pytest
-from hypothesis import assume, given, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from lxml import etree as ET
 
 from tqa.models import ComponentReport
+from tqa.parsers.cobertura import parse_cobertura
+from tqa.parsers.lcov import parse_lcov
+from tqa.parsers.mutmut import parse_mutmut
+from tqa.parsers.pit import parse_pit
+from tqa.parsers.stryker import parse_stryker
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -87,8 +92,6 @@ def _assert_valid_component(component: ComponentReport) -> None:
 # Cobertura parser
 # ---------------------------------------------------------------------------
 
-from tqa.parsers.cobertura import parse_cobertura
-
 
 @st.composite
 def _cobertura_xml(draw) -> str:
@@ -107,7 +110,7 @@ def _cobertura_xml(draw) -> str:
             f'<class filename="{filename}"><lines>{lines_xml}</lines></class>\n'
         )
     return (
-        "<?xml version=\"1.0\"?>"
+        '<?xml version="1.0"?>'
         "<coverage><packages><package><classes>"
         f"{classes_xml}"
         "</classes></package></packages></coverage>"
@@ -129,7 +132,7 @@ def test_cobertura_line_count_matches_unique_numbers(num_lines):
         f'<line number="{i}" hits="{i % 2}"/>' for i in range(1, num_lines + 1)
     )
     xml = (
-        "<?xml version=\"1.0\"?>"
+        '<?xml version="1.0"?>'
         "<coverage><packages><package><classes>"
         f'<class filename="f.py"><lines>{lines}</lines></class>'
         "</classes></package></packages></coverage>"
@@ -180,7 +183,7 @@ def test_cobertura_empty_file_returns_empty_report(tmp_path):
 def test_cobertura_missing_hits_attribute(tmp_path):
     """A <line> without 'hits' should raise ValueError or be skipped."""
     xml = (
-        "<?xml version=\"1.0\"?>"
+        '<?xml version="1.0"?>'
         "<coverage><packages><package><classes>"
         '<class filename="f.py"><lines>'
         '<line number="1"/>'  # missing hits
@@ -199,7 +202,7 @@ def test_cobertura_missing_hits_attribute(tmp_path):
 def test_cobertura_missing_filename_attribute(tmp_path):
     """A <class> without 'filename' must not raise an unhandled KeyError."""
     xml = (
-        "<?xml version=\"1.0\"?>"
+        '<?xml version="1.0"?>'
         "<coverage><packages><package><classes>"
         "<class><lines>"
         '<line number="1" hits="1"/>'
@@ -218,8 +221,6 @@ def test_cobertura_missing_filename_attribute(tmp_path):
 # ---------------------------------------------------------------------------
 # PIT parser
 # ---------------------------------------------------------------------------
-
-from tqa.parsers.pit import parse_pit
 
 
 @st.composite
@@ -242,8 +243,7 @@ def _pit_xml(draw) -> str:
             f"</mutation>\n"
         )
     return (
-        '<?xml version="1.0" encoding="UTF-8"?>'
-        f"<mutations>{mutations_xml}</mutations>"
+        f'<?xml version="1.0" encoding="UTF-8"?><mutations>{mutations_xml}</mutations>'
     )
 
 
@@ -358,8 +358,6 @@ def test_pit_mutation_missing_line_number(tmp_path):
 # Stryker parser
 # ---------------------------------------------------------------------------
 
-from tqa.parsers.stryker import parse_stryker
-
 
 @st.composite
 def _mutant_location(draw) -> dict:
@@ -472,9 +470,7 @@ def test_stryker_file_with_no_mutants_key(tmp_path):
     parse_stryker(str(p), component)
     if "src/app.js" in component.files:
         all_mutants = [
-            m
-            for ld in component.files["src/app.js"].lines.values()
-            for m in ld.mutants
+            m for ld in component.files["src/app.js"].lines.values() for m in ld.mutants
         ]
         assert all_mutants == []
 
@@ -504,8 +500,6 @@ def test_stryker_mutant_with_missing_location_key(tmp_path):
 # LCOV parser
 # ---------------------------------------------------------------------------
 
-from tqa.parsers.lcov import parse_lcov
-
 
 @st.composite
 def _lcov_record(draw) -> str:
@@ -523,9 +517,7 @@ def _lcov_record(draw) -> str:
 @st.composite
 def _lcov_content(draw) -> str:
     num_records = draw(st.integers(min_value=0, max_value=5))
-    records = draw(
-        st.lists(_lcov_record(), min_size=num_records, max_size=num_records)
-    )
+    records = draw(st.lists(_lcov_record(), min_size=num_records, max_size=num_records))
     return "".join(records)
 
 
@@ -609,8 +601,7 @@ def test_lcov_da_line_with_extra_commas(tmp_path):
 
 def test_lcov_multiple_records_same_filename(tmp_path):
     content = (
-        "SF:src/app.js\nDA:1,1\nend_of_record\n"
-        "SF:src/app.js\nDA:2,0\nend_of_record\n"
+        "SF:src/app.js\nDA:1,1\nend_of_record\nSF:src/app.js\nDA:2,0\nend_of_record\n"
     )
     p = tmp_path / "dup.info"
     p.write_text(content, encoding="utf-8")
@@ -623,8 +614,6 @@ def test_lcov_multiple_records_same_filename(tmp_path):
 # ---------------------------------------------------------------------------
 # mutmut parser
 # ---------------------------------------------------------------------------
-
-from tqa.parsers.mutmut import parse_mutmut
 
 
 @st.composite
@@ -648,7 +637,7 @@ def _mutmut_xml(draw) -> str:
         )
     return (
         '<?xml version="1.0"?>'
-        "<testsuites><testsuite name=\"mutmut\">"
+        '<testsuites><testsuite name="mutmut">'
         f"{testcases_xml}"
         "</testsuite></testsuites>"
     )
@@ -675,7 +664,7 @@ def test_mutmut_single_testcase_status(filename, line, survived):
     )
     xml = (
         '<?xml version="1.0"?>'
-        "<testsuites><testsuite name=\"mutmut\">"
+        '<testsuites><testsuite name="mutmut">'
         f'<testcase name="Mutant #1" file="{filename}" line="{line}">'
         f"{failure_xml}"
         "</testcase>"
@@ -776,6 +765,7 @@ def test_mutmut_error_element_treated_as_survived(tmp_path):
 # ---------------------------------------------------------------------------
 # Cross-parser property: parsers are idempotent on subsequent identical calls
 # ---------------------------------------------------------------------------
+
 
 @given(_cobertura_xml())
 @settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow])
