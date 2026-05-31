@@ -6,6 +6,7 @@ from tqa.formatters.surviving_mutants import (
     coverage_label,
     mutant_count_label,
     mutator_descriptions,
+    source_line_text,
     suggestion_label,
     sorted_surviving_findings,
 )
@@ -84,7 +85,9 @@ def _component_table(component: ComponentReport) -> list[str]:
         else:
             tsi_str = "N/A"
             status = "—"
-        rows.append(f"| {_file_link(file_path, base_url)} | {cov:.1f}% | {tsi_str} | {status} |")
+        rows.append(
+            f"| {_file_link(file_path, base_url)} | {cov:.1f}% | {tsi_str} | {status} |"
+        )
     return rows
 
 
@@ -92,18 +95,43 @@ def _comp_display_name(name: str) -> str:
     return name.replace("-", " ").replace("_", " ").title()
 
 
+def _source_cell(finding: dict) -> str:
+    """Format source line text as an inline code span, or empty string."""
+    text = source_line_text(finding)
+    if text is None:
+        return ""
+    # Escape backticks inside the code span so the cell renders correctly.
+    escaped = text.strip().replace("`", "&#96;")
+    return f"`{escaped}`"
+
+
 def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
-    rows = [
-        "| File | Line | Coverage | Mutants | Mutator Details | Suggested Test Focus |",
-        "| :--- | :---: | :---: | :---: | :--- | :--- |",
-    ]
+    limited = sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]
+    has_source = any(source_line_text(f) is not None for f in limited)
+    if has_source:
+        rows = [
+            "| File | Line | Coverage | Mutants | Source | Mutator Details | Suggested Test Focus |",
+            "| :--- | :---: | :---: | :---: | :--- | :--- | :--- |",
+        ]
+    else:
+        rows = [
+            "| File | Line | Coverage | Mutants | Mutator Details | Suggested Test Focus |",
+            "| :--- | :---: | :---: | :---: | :--- | :--- |",
+        ]
     base_url = _blob_base_url()
-    for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
-        rows.append(
-            f"| {_file_link(finding['file'], base_url)} | {finding['line']} | {coverage_label(finding)} | "
-            f"{mutant_count_label(finding)} | {mutator_descriptions(finding)} | "
-            f"{suggestion_label(finding)} |"
-        )
+    for finding in limited:
+        if has_source:
+            rows.append(
+                f"| {_file_link(finding['file'], base_url)} | {finding['line']} | {coverage_label(finding)} | "
+                f"{mutant_count_label(finding)} | {_source_cell(finding)} | "
+                f"{mutator_descriptions(finding)} | {suggestion_label(finding)} |"
+            )
+        else:
+            rows.append(
+                f"| {_file_link(finding['file'], base_url)} | {finding['line']} | {coverage_label(finding)} | "
+                f"{mutant_count_label(finding)} | {mutator_descriptions(finding)} | "
+                f"{suggestion_label(finding)} |"
+            )
     return rows
 
 
@@ -117,7 +145,9 @@ def generate_markdown_summary(report: ProjectReport) -> str:
 
     # Headline metrics first
     if multi and report.has_mutation_data:
-        lines.append(f"**Total Project Test Strength: {report.total_test_strength * 100:.1f}%**")
+        lines.append(
+            f"**Total Project Test Strength: {report.total_test_strength * 100:.1f}%**"
+        )
         lines.append("")
 
     for comp_name, component in report.components.items():
@@ -151,7 +181,9 @@ def generate_markdown_summary(report: ProjectReport) -> str:
         lines.extend(_surviving_mutant_rows(surviving_mutants))
         if len(surviving_mutants) > SURVIVING_MUTANT_LIMIT:
             lines.append("")
-            lines.append(f"_Showing top {SURVIVING_MUTANT_LIMIT} of {len(surviving_mutants)} findings._")
+            lines.append(
+                f"_Showing top {SURVIVING_MUTANT_LIMIT} of {len(surviving_mutants)} findings._"
+            )
         lines.append("")
 
     gaps = engine.get_critical_gaps(report)

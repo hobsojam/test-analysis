@@ -1,6 +1,14 @@
 SURVIVING_MUTANT_LIMIT = 10
 
 
+def source_line_text(finding: dict) -> str | None:
+    """Return the raw source line text from a finding's source_context, or None."""
+    ctx = finding.get("source_context")
+    if not ctx:
+        return None
+    return ctx.get("text")
+
+
 def sorted_surviving_findings(findings: list[dict]) -> list[dict]:
     return sorted(findings, key=_surviving_mutant_sort_key)
 
@@ -37,9 +45,15 @@ def mutator_descriptions(finding: dict) -> str:
     if not descriptions:
         return "N/A"
     visible = descriptions[:max_descriptions]
-    suffix = "" if len(descriptions) <= max_descriptions else f", +{len(descriptions) - max_descriptions} more"
+    suffix = (
+        ""
+        if len(descriptions) <= max_descriptions
+        else f", +{len(descriptions) - max_descriptions} more"
+    )
     return ", ".join(visible) + suffix
 
 
 def suggestion_label(finding: dict) -> str:
-    return finding.get("suggestion") or "Add a test that catches the surviving mutation."
+    return (
+        finding.get("suggestion") or "Add a test that catches the surviving mutation."
+    )
