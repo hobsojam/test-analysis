@@ -6,6 +6,7 @@ from tqa.formatters.surviving_mutants import (
     coverage_label,
     mutant_count_label,
     mutator_descriptions,
+    source_line_text,
     suggestion_label,
     sorted_surviving_findings,
 )
@@ -13,7 +14,9 @@ from tqa.models import ProjectReport, ComponentReport
 
 
 # NOTE: Column structure and thresholds must stay in sync with _component_table() in github.py.
-def _render_component_table(console: Console, component: ComponentReport, title: str) -> None:
+def _render_component_table(
+    console: Console, component: ComponentReport, title: str
+) -> None:
     table = Table(title=title)
     table.add_column("File", style="cyan")
     table.add_column("Coverage", justify="right")
@@ -45,28 +48,38 @@ def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
     if not findings:
         return
 
+    limited = sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]
+    has_source = any(source_line_text(f) is not None for f in limited)
+
     table = Table(title="Surviving Mutants")
     table.add_column("File", style="cyan")
     table.add_column("Line", justify="right")
     table.add_column("Coverage", justify="center")
     table.add_column("Mutants", justify="right", no_wrap=True)
+    if has_source:
+        table.add_column("Source", style="dim", no_wrap=True)
     table.add_column("Mutator Details", no_wrap=True)
     table.add_column("Suggested Test Focus")
 
-    for finding in sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]:
-        table.add_row(
+    for finding in limited:
+        row = [
             finding["file"],
             str(finding["line"]),
             coverage_label(finding),
             mutant_count_label(finding),
-            mutator_descriptions(finding),
-            suggestion_label(finding),
-        )
+        ]
+        if has_source:
+            text = source_line_text(finding)
+            row.append(text.strip() if text else "")
+        row.extend([mutator_descriptions(finding), suggestion_label(finding)])
+        table.add_row(*row)
 
     console.print("")
     console.print(table)
     if len(findings) > SURVIVING_MUTANT_LIMIT:
-        console.print(f"[dim]Showing top {SURVIVING_MUTANT_LIMIT} of {len(findings)} findings.[/]")
+        console.print(
+            f"[dim]Showing top {SURVIVING_MUTANT_LIMIT} of {len(findings)} findings.[/]"
+        )
 
 
 def print_summary_table(report: ProjectReport, console: Console | None = None) -> None:
@@ -82,18 +95,34 @@ def print_summary_table(report: ProjectReport, console: Console | None = None) -
         _render_component_table(console, component, title)
 
         if component.has_mutation_data:
-            label = f"{display} Test Strength" if multi else "Total Project Test Strength"
-            console.print(f"\n[bold]{label}:[/] [green]{component.total_test_strength * 100:.1f}%[/]")
+            label = (
+                f"{display} Test Strength" if multi else "Total Project Test Strength"
+            )
+            console.print(
+                f"\n[bold]{label}:[/] [green]{component.total_test_strength * 100:.1f}%[/]"
+            )
         else:
-            label = f"{display} Test Strength" if multi else "Total Project Test Strength"
+            label = (
+                f"{display} Test Strength" if multi else "Total Project Test Strength"
+            )
             console.print(f"\n[bold]{label}:[/] [dim]N/A — no mutation data[/]")
             if not multi:
-                console.print("\n[yellow]Tip:[/] TSI requires a mutation report. Add one with:")
-                console.print("  JS:     [bold]stryker run[/] → [bold]--stryker reports/mutation/mutation.json[/]")
-                console.print("  Python: [bold]mutmut run[/]  → [bold]--mutmut mutmut.xml[/]")
-                console.print("  Java:   [bold]mvn pitest:mutationCoverage[/] → [bold]--pit mutations.xml[/]")
+                console.print(
+                    "\n[yellow]Tip:[/] TSI requires a mutation report. Add one with:"
+                )
+                console.print(
+                    "  JS:     [bold]stryker run[/] → [bold]--stryker reports/mutation/mutation.json[/]"
+                )
+                console.print(
+                    "  Python: [bold]mutmut run[/]  → [bold]--mutmut mutmut.xml[/]"
+                )
+                console.print(
+                    "  Java:   [bold]mvn pitest:mutationCoverage[/] → [bold]--pit mutations.xml[/]"
+                )
 
     if multi and report.has_mutation_data:
-        console.print(f"\n[bold]Total Project Test Strength:[/] [green]{report.total_test_strength * 100:.1f}%[/]")
+        console.print(
+            f"\n[bold]Total Project Test Strength:[/] [green]{report.total_test_strength * 100:.1f}%[/]"
+        )
 
     _render_surviving_mutants(console, AnalysisEngine().get_surviving_mutants(report))

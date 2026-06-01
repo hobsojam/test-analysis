@@ -1,12 +1,14 @@
 import pytest
 from io import StringIO
 from rich.console import Console
+from tqa.engine import AnalysisEngine
 from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary
 from tqa.formatters.surviving_mutants import (
     coverage_label,
     mutant_count_label,
     mutator_descriptions,
+    source_line_text,
     sorted_surviving_findings,
     SURVIVING_MUTANT_LIMIT,
 )
@@ -482,3 +484,152 @@ def test_sorted_surviving_findings_covered_all_survived_first():
     assert result[0]["covered"] is True and result[0]["all_survived"] is True
     assert result[1]["covered"] is True and result[1]["all_survived"] is False
     assert result[2]["covered"] is False
+
+
+# --- source_line_text helper ---
+
+
+def _make_finding_with_source(text: str | None) -> dict:
+    finding = _make_finding(1, 1, True, ["X"])
+    if text is not None:
+        finding["source_context"] = {
+            "text": text,
+            "line": 1,
+            "path": "f.py",
+            "start_line": 1,
+            "end_line": 1,
+            "context": [],
+        }
+    return finding
+
+
+def test_source_line_text_returns_text_when_context_present():
+    finding = _make_finding_with_source("    return x + 1")
+    assert source_line_text(finding) == "    return x + 1"
+
+
+def test_source_line_text_returns_none_when_no_source_context_key():
+    finding = _make_finding(1, 1, True, ["X"])
+    assert source_line_text(finding) is None
+
+
+def test_source_line_text_returns_none_when_source_context_is_none():
+    finding = _make_finding(1, 1, True, ["X"])
+    finding["source_context"] = None
+    assert source_line_text(finding) is None
+
+
+# --- GitHub formatter: source context in surviving mutants ---
+
+
+def _report_for_source_context(tmp_path) -> tuple:
+    """Write a temp source file and build a report referencing it."""
+    source_file = tmp_path / "src" / "auth.py"
+    source_file.parent.mkdir()
+    source_file.write_text(
+        "def check(user):\n    return user.is_admin\n",
+        encoding="utf-8",
+    )
+    report = ProjectReport()
+    component = ComponentReport()
+    component.files["src/auth.py"] = FileReport(file_path="src/auth.py")
+    component.files["src/auth.py"].lines[2] = LineData(
+        line_number=2,
+        is_covered=True,
+        mutants=[
+            MutantData(id="m1", status="Survived", line=2, description="ReturnValue")
+        ],
+    )
+    report.components["default"] = component
+    return report, str(tmp_path)
+
+
+def test_github_formatter_includes_source_line_in_surviving_mutants(tmp_path):
+    report, project_root = _report_for_source_context(tmp_path)
+    findings = AnalysisEngine().get_surviving_mutants(report, project_root=project_root)
+    # Patch the findings directly into a markdown call via generate_markdown_summary
+    # by verifying the formatter helper renders the source column.
+    from tqa.formatters.github import _surviving_mutant_rows
+
+    rows = _surviving_mutant_rows(findings)
+    table_text = "\n".join(rows)
+    assert "Source" in table_text
+    assert "return user.is_admin" in table_text
+
+
+def test_github_formatter_omits_source_column_when_no_context():
+    findings = [_make_finding(1, 1, True, ["ReturnValue"])]
+    from tqa.formatters.github import _surviving_mutant_rows
+
+    rows = _surviving_mutant_rows(findings)
+    table_text = "\n".join(rows)
+    assert "Source" not in table_text
+
+
+def test_github_formatter_source_column_uses_inline_code_span(tmp_path):
+    report, project_root = _report_for_source_context(tmp_path)
+    findings = AnalysisEngine().get_surviving_mutants(report, project_root=project_root)
+    from tqa.formatters.github import _surviving_mutant_rows
+
+    rows = _surviving_mutant_rows(findings)
+    # Source line should be wrapped in backtick code span
+    data_rows = [
+        r for r in rows if r.startswith("|") and "Source" not in r and ":---" not in r
+    ]
+    assert any("`return user.is_admin`" in row for row in data_rows)
+
+
+# --- Console formatter: source context in surviving mutants ---
+
+
+def _capture(report: ProjectReport) -> str:
+    buf = StringIO()
+    console = Console(file=buf, legacy_windows=False, width=200, highlight=False)
+    print_summary_table(report, console)
+    return buf.getvalue()
+
+
+def test_console_formatter_includes_source_line_in_surviving_mutants(tmp_path):
+    source_file = tmp_path / "src" / "auth.py"
+    source_file.parent.mkdir()
+    source_file.write_text(
+        "def check(user):\n    return user.is_admin\n",
+        encoding="utf-8",
+    )
+    # Build a report whose findings include source_context by calling the engine.
+    report = ProjectReport()
+    component = ComponentReport()
+    component.files["src/auth.py"] = FileReport(file_path="src/auth.py")
+    component.files["src/auth.py"].lines[2] = LineData(
+        line_number=2,
+        is_covered=True,
+        mutants=[
+            MutantData(id="m1", status="Survived", line=2, description="ReturnValue")
+        ],
+    )
+    report.components["default"] = component
+
+    # Use a custom console render that passes project_root to the engine.
+    findings = AnalysisEngine().get_surviving_mutants(
+        report, project_root=str(tmp_path)
+    )
+    from tqa.formatters.console import _render_surviving_mutants
+
+    buf = StringIO()
+    console = Console(file=buf, legacy_windows=False, width=200, highlight=False)
+    _render_surviving_mutants(console, findings)
+    output = buf.getvalue()
+
+    assert "Source" in output
+    assert "return user.is_admin" in output
+
+
+def test_console_formatter_omits_source_column_when_no_context():
+    findings = [_make_finding(1, 1, True, ["ReturnValue"])]
+    from tqa.formatters.console import _render_surviving_mutants
+
+    buf = StringIO()
+    console = Console(file=buf, legacy_windows=False, width=200, highlight=False)
+    _render_surviving_mutants(console, findings)
+    output = buf.getvalue()
+    assert "Source" not in output
