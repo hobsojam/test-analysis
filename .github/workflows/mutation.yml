@@ -1,0 +1,64 @@
+name: Weekly Mutation Tests
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run tests and collect coverage
+        run: pytest tests/ --cov=tqa --cov-report=xml:coverage.xml
+
+      - name: Run mutation tests
+        run: mutmut run
+        continue-on-error: true
+
+      - name: Export mutation results
+        run: mutmut junitxml > mutmut.xml
+
+      - name: Analyze with TQA
+        run: |
+          python -m tqa.cli analyze \
+            --config tqa.toml \
+            --format github > tqa-summary.md
+        continue-on-error: true
+
+      - name: Post summary to job
+        run: cat tqa-summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate sample output SVG
+        run: |
+          python -m tqa.cli analyze \
+            --config tqa.toml \
+            --export-svg sample-output.svg
+
+      - name: Push SVG to build-artifacts branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh auth setup-git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan tmp-build-artifacts
+          git rm -rf --cached .
+          git add sample-output.svg
+          git commit -m "update sample output"
+          git push --force origin HEAD:build-artifacts
