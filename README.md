@@ -117,7 +117,7 @@ tqa analyze [OPTIONS]
   --mutmut PATH       mutmut JUnit XML (mutmut junitxml)
   --mutant PATH       Mutant session JSON file or .mutant/results directory
   --pit PATH          PIT mutations.xml
-  --format [console|github|sonarcloud]  Output format (default: console)
+  --format [console|github|sonarcloud|json]  Output format (default: console)
   --fail-under FLOAT  Exit 1 if TSI is below this percentage
   --export-svg PATH   Save the console output as an SVG image
 ```
@@ -270,35 +270,18 @@ stryker = "reports/client/mutation.json"
 
 ## GitHub Actions integration
 
-### Single-job example (Python)
+Mutation testing is slow. The recommended pattern is to **run coverage on every PR** for fast feedback and **run mutation tests on a weekly schedule** for deeper analysis. This keeps PR pipelines short while still giving you regular TSI data.
+
+### Recommended: coverage on PRs, mutation on a schedule
+
+**`.github/workflows/ci.yml`** — runs on every PR and push to main:
 
 ```yaml
 - name: Run tests with coverage
   run: python -m pytest --cov --cov-report=xml:coverage.xml tests/
 
-- name: Verify coverage data was collected
-  run: |
-    python -c "
-    import xml.etree.ElementTree as ET
-    assert ET.parse('coverage.xml').findall('.//class'), \
-      'coverage.xml has no file entries — coverage collected no data'
-    "
-
-- name: Run mutation tests
-  id: mutmut
-  run: mutmut run
-  continue-on-error: true   # mutmut exits non-zero when mutants survive
-
-- name: Export mutation results
-  if: steps.mutmut.outcome == 'success'
-  run: mutmut junitxml > mutmut.xml
-
-- name: Run TQA
-  run: |
-    tqa analyze \
-      --coverage coverage.xml \
-      $([ -f mutmut.xml ] && echo '--mutmut mutmut.xml') \
-      --format github > tqa-summary.md
+- name: Run TQA (coverage only)
+  run: tqa analyze --coverage coverage.xml --format github > tqa-summary.md
 
 - name: Comment on PR
   if: github.event_name == 'pull_request'
@@ -316,9 +299,80 @@ stryker = "reports/client/mutation.json"
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-The comment step updates the existing TQA comment in place rather than appending a new one on every push.
+**`.github/workflows/mutation.yml`** — runs weekly and updates the README SVG:
 
-**Why the export step is conditional**: `mutmut run` exits non-zero whenever any mutant survives (the normal case), so `continue-on-error: true` is required. However, if mutmut crashes entirely — OOM, timeout, missing source files — the exit code is still non-zero but the `.mutmut-cache` database is absent or corrupt. Running `mutmut junitxml` in that state produces an empty or invalid XML file, which TQA would then read as "zero mutants tested", silently omitting the mutation column from the report. Gating the export on `steps.mutmut.outcome == 'success'` ensures the XML is only written when mutmut completed a real run. The `[ -f mutmut.xml ]` check in the TQA step then omits `--mutmut` entirely when the file is absent, so the report shows coverage data only rather than misleading zero-mutation metrics.
+```yaml
+name: Weekly Mutation Tests
+on:
+  schedule:
+    - cron: '0 9 * * 1'   # Every Monday at 09:00 UTC
+  workflow_dispatch:        # Allow manual runs
+
+permissions:
+  contents: write
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -e .[dev]
+
+      - name: Run tests and collect coverage
+        run: pytest tests/ --cov=tqa --cov-report=xml:coverage.xml
+
+      - name: Run mutation tests
+        run: mutmut run
+        continue-on-error: true   # exits non-zero when mutants survive
+
+      - name: Export mutation results
+        run: mutmut junitxml > mutmut.xml
+
+      - name: Analyze with TQA
+        run: tqa analyze --config tqa.toml --format github > tqa-summary.md
+
+      - name: Post to job summary
+        run: cat tqa-summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Update README SVG
+        run: tqa analyze --config tqa.toml --export-svg sample-output.svg
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan tmp-build-artifacts
+          git rm -rf --cached .
+          git add sample-output.svg
+          git commit -m "update sample output"
+          git push --force origin HEAD:build-artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+`workflow_dispatch` lets you trigger a mutation run manually from the Actions UI at any time — useful after a large refactor or before a release. The job summary makes weekly TSI data visible in Actions without needing a PR.
+
+### If you want mutation data in every PR
+
+If your mutation suite is fast enough, you can include it in the PR pipeline. Gate the XML export on a successful run to avoid misleading zero-mutation data:
+
+```yaml
+- name: Run mutation tests
+  id: mutmut
+  run: mutmut run
+  continue-on-error: true   # mutmut exits non-zero when mutants survive
+
+- name: Export mutation results
+  if: steps.mutmut.outcome == 'success'
+  run: mutmut junitxml > mutmut.xml
+
+- name: Run TQA
+  run: |
+    tqa analyze \
+      --coverage coverage.xml \
+      $([ -f mutmut.xml ] && echo '--mutmut mutmut.xml') \
+      --format github > tqa-summary.md
+```
+
+**Why the export step is conditional**: `mutmut run` exits non-zero whenever any mutant survives (the normal case), so `continue-on-error: true` is required. However, if mutmut crashes — OOM, timeout, missing source files — the exit code is still non-zero but the database is absent or corrupt. Running `mutmut junitxml` in that state produces an empty or invalid XML file, which TQA would read as "zero mutants tested". Gating the export on `steps.mutmut.outcome == 'success'` ensures the XML is only written when mutmut completed a real run.
 
 ### Multi-job example (JavaScript — tests and TQA in separate jobs)
 
@@ -423,6 +477,16 @@ The report structure is:
 
 Suggestions are deterministic heuristics based on the mutator name and optional source-line context. They are meant to point at the missing test signal, not to guarantee a complete test case.
 
+### JSON (`--format json`)
+
+Produces a machine-readable JSON document containing the full analysis result — useful for scripting, dashboards, or tooling built on top of tqa. The document includes top-level `tsi`, per-component and per-file metrics, a `surviving_mutants` array, and a `critical_gaps` array.
+
+```bash
+tqa analyze --coverage coverage.xml --mutmut mutmut.xml --format json > tqa.json
+```
+
+Only lines with mutation data appear in the per-file `lines` array; fully covered-only lines are omitted to keep the output compact.
+
 ### SonarCloud (`--format sonarcloud`)
 
 Produces the same Markdown summary as `--format github` and writes a
@@ -454,34 +518,9 @@ The two outputs are independent — write to both, or either one alone.
 
 ### Auto-updating a README sample output image
 
-Use `--export-svg` to keep a live screenshot of tqa's output in your README, generated from your real CI data on every merge to `main`:
+Use `--export-svg` to keep a live screenshot of tqa's output in your README. The recommended place for this is the weekly mutation job (see above), since the SVG is most useful when it includes both coverage and TSI data. The push step at the end of the weekly mutation workflow example already handles this.
 
-```yaml
-  update-sample-output:
-    if: github.event_name == 'push'
-    needs: [your-test-job]          # must run after coverage + mutation reports exist
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: pip install tqa
-      - uses: actions/download-artifact@v4
-        with: { name: coverage-report }
-      - uses: actions/download-artifact@v4
-        with: { name: mutation-report }
-      - run: tqa analyze --config tqa.toml --export-svg sample-output.svg
-      - run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan tmp-build-artifacts
-          git rm -rf --cached .
-          git add sample-output.svg
-          git commit -m "update sample output"
-          git push --force origin HEAD:build-artifacts
-```
-
-Then reference it in your README using the raw URL:
+Reference it in your README using the raw URL:
 
 ```markdown
 ![TQA output](https://raw.githubusercontent.com/your-org/your-repo/build-artifacts/sample-output.svg)

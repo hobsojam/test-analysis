@@ -81,19 +81,6 @@ jobs:
           print(f'coverage.xml OK: {len(classes)} file(s) measured')
           "
 
-      - name: Run mutation tests
-        run: mutmut run
-        continue-on-error: true
-
-      - name: Export mutation results
-        run: mutmut junitxml > mutmut.xml
-
-      - name: Upload mutation report
-        uses: actions/upload-artifact@v7
-        with:
-          name: mutation-report
-          path: mutmut.xml
-
       - name: Analyze with TQA
         run: |
           python -m tqa.cli analyze \
@@ -132,51 +119,6 @@ jobs:
                 body: summary,
               });
             }
-
-  update-sample-output:
-    name: Update README sample output
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    needs: [quality-and-security]
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install tqa
-        run: pip install -e .
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: coverage-report
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: mutation-report
-
-      - name: Generate sample output SVG
-        run: |
-          python -m tqa.cli analyze \
-            --config tqa.toml \
-            --export-svg sample-output.svg
-
-      - name: Push SVG to build-artifacts branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh auth setup-git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan tmp-build-artifacts
-          git rm -rf --cached .
-          git add sample-output.svg
-          git commit -m "update sample output"
-          git push --force origin HEAD:build-artifacts
 
   sonar:
     name: SonarCloud
