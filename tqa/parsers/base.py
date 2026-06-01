@@ -4,5 +4,4 @@ from tqa.models import ComponentReport
 
 class Parser(ABC):
     @abstractmethod
-    def parse(self, path: str, report: ComponentReport) -> ComponentReport:
-        ...
+    def parse(self, path: str, report: ComponentReport) -> ComponentReport: ...

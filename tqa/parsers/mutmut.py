@@ -1,6 +1,6 @@
 import lxml.etree as ET
 import re
-from tqa.models import ComponentReport, FileReport, LineData, MutantData
+from tqa.models import ComponentReport, FileReport, LineData, MutantData, MutantStatus
 from tqa.parsers.base import Parser
 from tqa.parsers.mutmut_diff import infer_mutmut_description
 from tqa.parsers.registry import register_parser
@@ -28,16 +28,18 @@ class MutmutParser(Parser):
                 name = testcase.get("name")
                 if not name:
                     continue
-                match = re.search(r"mutant #(\d+) \(file: (.*), line: (\d+)\)", name, re.IGNORECASE)
+                match = re.search(
+                    r"mutant #(\d+) \(file: (.*), line: (\d+)\)", name, re.IGNORECASE
+                )
                 if not match:
                     continue
                 mutant_id, file_path, line_str = match.groups()
 
             line = int(line_str)
-            status = "Killed"
+            status = MutantStatus.KILLED
             failure_nodes = testcase.xpath("./failure") or testcase.xpath("./error")
             if failure_nodes:
-                status = "Survived"
+                status = MutantStatus.SURVIVED
             failure_text = failure_nodes[0].text if failure_nodes else None
             description = infer_mutmut_description(failure_text)
 

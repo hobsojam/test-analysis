@@ -19,8 +19,12 @@ def _report_with_survivors() -> ProjectReport:
         line_number=12,
         is_covered=True,
         mutants=[
-            MutantData(id="1", status="Killed", line=12, description="ArithmeticOperator"),
-            MutantData(id="2", status="Survived", line=12, description="ConditionalBoundary"),
+            MutantData(
+                id="1", status="Killed", line=12, description="ArithmeticOperator"
+            ),
+            MutantData(
+                id="2", status="Survived", line=12, description="ConditionalBoundary"
+            ),
         ],
     )
     report.components["default"] = component

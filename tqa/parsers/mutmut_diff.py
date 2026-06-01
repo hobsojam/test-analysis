@@ -70,7 +70,9 @@ def _classify_change(before: str, after: str) -> str | None:
     return None
 
 
-def _has_token_swap(before: str, after: str, pairs: tuple[tuple[str, str], ...]) -> bool:
+def _has_token_swap(
+    before: str, after: str, pairs: tuple[tuple[str, str], ...]
+) -> bool:
     for old, new in pairs:
         if old in before and new in after:
             before_without_old = before.replace(old, "", 1)

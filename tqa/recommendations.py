@@ -49,7 +49,11 @@ def recommendation_for_finding(finding: dict) -> str:
 
     descriptions = list(_mutator_descriptions(finding))
     for keywords, suggestion in _RULES:
-        if any(keyword in description for description in descriptions for keyword in keywords):
+        if any(
+            keyword in description
+            for description in descriptions
+            for keyword in keywords
+        ):
             return _with_source_focus(suggestion, finding)
     return _with_source_focus(FALLBACK_SUGGESTION, finding)
 

@@ -1,5 +1,11 @@
 import json
-from tqa.models import ComponentReport, FileReport, LineData, MutantData
+from tqa.models import (
+    ComponentReport,
+    FileReport,
+    LineData,
+    MutantData,
+    normalise_status,
+)
 from tqa.parsers.base import Parser
 from tqa.parsers.registry import register_parser
 
@@ -20,7 +26,7 @@ class StrykerParser(Parser):
                 file_report.lines[line].mutants.append(
                     MutantData(
                         id=str(m.get("id")),
-                        status=m.get("status"),
+                        status=normalise_status(m.get("status") or ""),
                         line=line,
                         description=m.get("mutatorName"),
                     )

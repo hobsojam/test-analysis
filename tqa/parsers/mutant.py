@@ -3,13 +3,15 @@ from pathlib import Path
 import re
 from typing import Any, Iterable
 
-from tqa.models import ComponentReport, FileReport, LineData, MutantData
+from tqa.models import (
+    ComponentReport,
+    FileReport,
+    LineData,
+    MutantData,
+    normalise_status,
+)
 from tqa.parsers.base import Parser
 from tqa.parsers.registry import register_parser
-
-
-SURVIVED_STATUSES = {"alive", "survived", "surviving"}
-KILLED_STATUSES = {"killed", "dead", "timeout", "error", "failed"}
 
 
 @register_parser("mutant")
@@ -66,7 +68,9 @@ def _mutation_results(
 
 
 def _looks_like_mutation_result(data: dict[str, Any]) -> bool:
-    if isinstance(data.get("mutation_result"), dict) and isinstance(data.get("criteria_result"), dict):
+    if isinstance(data.get("mutation_result"), dict) and isinstance(
+        data.get("criteria_result"), dict
+    ):
         return True
     if "mutation" in data or "mutant" in data:
         return _status_from(data) is not None
@@ -103,14 +107,17 @@ def _extract_mutant(
     raw_status = _status_from(result)
     if raw_status is None:
         return None
-    status = _normalize_status(raw_status)
-    mutant_id = _first_string(
-        (mutation, result),
-        "id",
-        "index",
-        "uuid",
-        "mutation_identification",
-    ) or f"mutant-{file_path}:{line}:{raw_status}"
+    status = normalise_status(raw_status)
+    mutant_id = (
+        _first_string(
+            (mutation, result),
+            "id",
+            "index",
+            "uuid",
+            "mutation_identification",
+        )
+        or f"mutant-{file_path}:{line}:{raw_status}"
+    )
     description = _description(mutation, result, parents)
 
     return (
@@ -167,7 +174,9 @@ def _line_from_location(context: dict[str, Any]) -> int | None:
 
 
 def _line_from_identification(context: dict[str, Any]) -> int | None:
-    identification = context.get("mutation_identification") or context.get("identification")
+    identification = context.get("mutation_identification") or context.get(
+        "identification"
+    )
     if not isinstance(identification, str):
         return None
     match = re.search(r":(\d+):[^:]+$", identification)
@@ -200,15 +209,6 @@ def _status_from(result: dict[str, Any]) -> str | None:
             if status is not None:
                 return status
     return None
-
-
-def _normalize_status(status: str) -> str:
-    normalized = status.lower()
-    if normalized in SURVIVED_STATUSES:
-        return "Survived"
-    if normalized in KILLED_STATUSES:
-        return "Killed"
-    return status
 
 
 def _description(

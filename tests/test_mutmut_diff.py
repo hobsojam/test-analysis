@@ -57,7 +57,9 @@ def test_infer_mutmut_description_from_call_replaced_with_blank_line():
         "--- main.py\n+++ main.py\n@@ -1,1 +1,1 @@\n-    x = foo\n+    y = bar\n",
     ],
 )
-def test_infer_mutmut_description_returns_none_for_ambiguous_diff(diff_text: str | None):
+def test_infer_mutmut_description_returns_none_for_ambiguous_diff(
+    diff_text: str | None,
+):
     assert infer_mutmut_description(diff_text) is None
 
 
