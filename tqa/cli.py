@@ -9,6 +9,7 @@ from rich.console import Console
 from tqa.engine import AnalysisEngine
 from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary, print_github_annotations
+from tqa.formatters.json_formatter import print_json_report
 from tqa.formatters.sonarcloud import SONARCLOUD_REPORT_PATH, write_sonarcloud_report
 
 
@@ -46,7 +47,7 @@ def main() -> None:
 )
 @click.option(
     "--format",
-    type=click.Choice(["console", "github", "sonarcloud"]),
+    type=click.Choice(["console", "github", "sonarcloud", "json"]),
     default="console",
 )
 @click.option(
@@ -107,6 +108,8 @@ def analyze(
             console.print(
                 "2. Mutation: Use `stryker run` (JS), `pitest` (Java), or `mutmut run` (Python)"
             )
+        elif format == "json":
+            click.echo(print_json_report(report))
         elif format in ("github", "sonarcloud"):
             if format == "sonarcloud":
                 write_sonarcloud_report(report)
@@ -136,6 +139,8 @@ def analyze(
         write_sonarcloud_report(report)
         click.echo(f"Wrote {SONARCLOUD_REPORT_PATH}", err=True)
         click.echo(generate_markdown_summary(report))
+    elif format == "json":
+        click.echo(print_json_report(report))
 
     if report.total_test_strength * 100 < fail_under:
         click.echo(
