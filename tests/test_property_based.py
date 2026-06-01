@@ -29,7 +29,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from lxml import etree as ET
 
-from tqa.models import ComponentReport
+from tqa.models import ComponentReport, normalise_status
 from tqa.parsers.cobertura import parse_cobertura
 from tqa.parsers.lcov import parse_lcov
 from tqa.parsers.mutmut import parse_mutmut
@@ -276,7 +276,7 @@ def test_pit_single_mutation_appears_in_report(source_file, line_number, status)
     assert line_number in component.files[source_file].lines
     mutants = component.files[source_file].lines[line_number].mutants
     assert len(mutants) == 1
-    assert mutants[0].status == status
+    assert mutants[0].status == normalise_status(status)
 
 
 @pytest.mark.parametrize(

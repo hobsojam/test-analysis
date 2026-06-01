@@ -3,7 +3,14 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 from tqa.cli import main
-from tqa.models import ProjectReport, ComponentReport, FileReport, LineData, MutantData
+from tqa.models import (
+    ProjectReport,
+    ComponentReport,
+    FileReport,
+    LineData,
+    MutantData,
+    MutantStatus,
+)
 from tqa.engine import AnalysisEngine
 from tqa.formatters.github import generate_markdown_summary
 from tqa.formatters.console import print_summary_table
@@ -19,13 +26,16 @@ from tqa.parsers.base import Parser
 
 # --- Test helpers ---
 
+
 def _make_file(killed: int, survived: int, covered: bool) -> FileReport:
     fr = FileReport(file_path="f.py")
     fr.lines[1] = LineData(line_number=1, is_covered=covered)
     for i in range(killed):
         fr.lines[1].mutants.append(MutantData(id=str(i), status="Killed", line=1))
     for i in range(survived):
-        fr.lines[1].mutants.append(MutantData(id=str(killed + i), status="Survived", line=1))
+        fr.lines[1].mutants.append(
+            MutantData(id=str(killed + i), status="Survived", line=1)
+        )
     return fr
 
 
@@ -43,9 +53,11 @@ def _make_report(killed: int, survived: int, covered: bool) -> ProjectReport:
 
 # --- Model defaults ---
 
+
 def test_mutant_data_description_defaults_to_none():
     m = MutantData(id="1", status="Killed", line=5)
     assert m.description is None
+
 
 def test_line_data_is_covered_defaults_to_false():
     line_data = LineData(line_number=1)
@@ -54,9 +66,11 @@ def test_line_data_is_covered_defaults_to_false():
 
 # --- Model properties ---
 
+
 def test_has_mutation_data_true_when_mutants_present():
     comp = _make_component(killed=1, survived=0, covered=True)
     assert comp.files["f.py"].has_mutation_data is True
+
 
 def test_has_mutation_data_false_when_no_mutants():
     comp = ComponentReport()
@@ -64,23 +78,29 @@ def test_has_mutation_data_false_when_no_mutants():
     comp.files["f.py"].lines[1] = LineData(line_number=1, is_covered=True)
     assert comp.files["f.py"].has_mutation_data is False
 
+
 def test_test_strength_all_killed():
     comp = _make_component(killed=2, survived=0, covered=True)
     assert comp.files["f.py"].test_strength == 1.0
+
 
 def test_test_strength_none_killed():
     comp = _make_component(killed=0, survived=2, covered=True)
     assert comp.files["f.py"].test_strength == 0.0
 
+
 def test_test_strength_uncovered_lines_ignored():
     comp = _make_component(killed=0, survived=2, covered=False)
     assert comp.files["f.py"].test_strength == 0.0
 
+
 def test_total_test_strength_empty_report():
     assert ProjectReport().total_test_strength == 0.0
 
+
 def test_project_has_mutation_data_false_when_empty():
     assert ProjectReport().has_mutation_data is False
+
 
 def test_project_total_strength_weighted_by_mutation_file_count():
     report = ProjectReport()
@@ -114,6 +134,7 @@ def test_project_total_strength_excludes_coverage_only_files():
 
 # --- Parser: cobertura ---
 
+
 def test_parse_cobertura():
     component = ComponentReport()
     parse_cobertura("tests/sample_cobertura.xml", component)
@@ -125,6 +146,7 @@ def test_parse_cobertura():
 
 
 # --- Parser: stryker ---
+
 
 def test_parse_stryker():
     component = ComponentReport()
@@ -139,6 +161,7 @@ def test_parse_stryker():
 
 # --- Parser: pit ---
 
+
 def test_parse_pit():
     component = ComponentReport()
     parse_pit("tests/sample_pit.xml", component)
@@ -146,22 +169,28 @@ def test_parse_pit():
     assert "Calculator.java" in component.files
     calc_report = component.files["Calculator.java"]
     assert len(calc_report.lines[10].mutants) == 2
-    assert calc_report.lines[10].mutants[0].status == "KILLED"
-    assert calc_report.lines[10].mutants[1].status == "SURVIVED"
+    assert calc_report.lines[10].mutants[0].status == MutantStatus.KILLED
+    assert calc_report.lines[10].mutants[1].status == MutantStatus.SURVIVED
+
 
 def test_parse_pit_line_number():
     component = ComponentReport()
     parse_pit("tests/sample_pit.xml", component)
     assert 10 in component.files["Calculator.java"].lines
 
+
 def test_parse_pit_mutator_field():
     component = ComponentReport()
     parse_pit("tests/sample_pit.xml", component)
     mutant = component.files["Calculator.java"].lines[10].mutants[0]
-    assert mutant.description == "org.pitest.mutationtest.engine.gregor.mutators.MathMutator"
+    assert (
+        mutant.description
+        == "org.pitest.mutationtest.engine.gregor.mutators.MathMutator"
+    )
 
 
 # --- Parser: mutmut ---
+
 
 def test_parse_mutmut():
     component = ComponentReport()
@@ -195,6 +224,7 @@ def test_parse_mutmut_infers_descriptions_from_survived_diffs():
     assert main_report.lines[40].mutants[0].description == "ReturnValue"
     assert main_report.lines[50].mutants[0].description == "VoidMethodCall"
 
+
 def test_parse_mutmut_line_numbers():
     component = ComponentReport()
     parse_mutmut("tests/sample_mutmut.xml", component)
@@ -204,6 +234,7 @@ def test_parse_mutmut_line_numbers():
 
 
 # --- Parser: mutant ---
+
 
 def test_parse_mutant_session_json():
     component = ComponentReport()
@@ -244,6 +275,7 @@ def test_parse_mutant_results_directory(tmp_path):
 
 # --- Parser: lcov ---
 
+
 def test_parse_lcov():
     component = ComponentReport()
     parse_lcov("tests/sample_lcov.info", component)
@@ -260,6 +292,7 @@ def test_parse_lcov():
 
 # --- Correlation ---
 
+
 def test_correlation():
     component = ComponentReport()
     parse_cobertura("tests/sample_cobertura.xml", component)
@@ -271,6 +304,7 @@ def test_correlation():
 
 
 # --- Engine: path reconciliation ---
+
 
 @pytest.mark.parametrize(
     "killed,survived,covered,expected",
@@ -306,7 +340,9 @@ def test_engine_surviving_mutants_reports_survivor_metadata(
         _make_report(killed=2, survived=0, covered=True),
     ],
 )
-def test_engine_surviving_mutants_excludes_lines_without_survivors(report: ProjectReport):
+def test_engine_surviving_mutants_excludes_lines_without_survivors(
+    report: ProjectReport,
+):
     assert AnalysisEngine().get_surviving_mutants(report) == []
 
 
@@ -319,23 +355,33 @@ def test_engine_surviving_mutants_excludes_lines_without_mutants():
 
     assert AnalysisEngine().get_surviving_mutants(report) == []
 
+
 def test_engine_surviving_mutants_includes_component_name_and_description():
     report = _report_with_line(
         "backend",
         "api.py",
         7,
         True,
-        [MutantData(id="mut-1", status="SURVIVED", line=7, description="ConditionalBoundary")],
+        [
+            MutantData(
+                id="mut-1",
+                status=MutantStatus.SURVIVED,
+                line=7,
+                description="ConditionalBoundary",
+            )
+        ],
     )
 
     findings = AnalysisEngine().get_surviving_mutants(report)
 
     assert findings[0]["component"] == "backend"
-    assert findings[0]["mutants"] == [{
-        "id": "mut-1",
-        "status": "SURVIVED",
-        "description": "ConditionalBoundary",
-    }]
+    assert findings[0]["mutants"] == [
+        {
+            "id": "mut-1",
+            "status": MutantStatus.SURVIVED,
+            "description": "ConditionalBoundary",
+        }
+    ]
 
 
 def _report_with_line(
@@ -379,11 +425,14 @@ def test_engine_critical_gaps_uses_only_covered_fully_survived_lines():
         mutants=[MutantData(id="4", status="Survived", line=3)],
     )
 
-    assert AnalysisEngine().get_critical_gaps(report) == [{
-        "file": "f.py",
-        "line": 1,
-        "survived": 1,
-    }]
+    assert AnalysisEngine().get_critical_gaps(report) == [
+        {
+            "file": "f.py",
+            "line": 1,
+            "survived": 1,
+        }
+    ]
+
 
 def test_path_reconciliation():
     component = ComponentReport()
@@ -398,6 +447,7 @@ def test_path_reconciliation():
     assert merged.lines[1].is_covered is True
     assert len(merged.lines[2].mutants) > 0
 
+
 def test_path_reconciliation_skips_ambiguous():
     component = ComponentReport()
     component.files["__init__.py"] = FileReport(file_path="__init__.py")
@@ -411,33 +461,40 @@ def test_path_reconciliation_skips_ambiguous():
 
 # --- Formatter: github ---
 
+
 def _make_healthy_report() -> ProjectReport:
     return _make_report(killed=4, survived=1, covered=True)
+
 
 def test_github_formatter_contains_header():
     report = _make_healthy_report()
     md = generate_markdown_summary(report)
     assert "# TQA Report Summary" in md
 
+
 def test_github_formatter_shows_tsi_percentage():
     report = _make_healthy_report()
     md = generate_markdown_summary(report)
     assert "80.0%" in md  # 4 killed / 5 total
+
 
 def test_github_formatter_healthy_status():
     report = _make_report(killed=9, survived=1, covered=True)
     md = generate_markdown_summary(report)
     assert "Healthy" in md
 
+
 def test_github_formatter_weak_status():
     report = _make_report(killed=6, survived=4, covered=True)
     md = generate_markdown_summary(report)
     assert "Weak" in md
 
+
 def test_github_formatter_blind_status():
     report = _make_report(killed=1, survived=9, covered=True)
     md = generate_markdown_summary(report)
     assert "Blind" in md
+
 
 def test_github_formatter_na_without_mutation_data():
     component = ComponentReport()
@@ -448,10 +505,12 @@ def test_github_formatter_na_without_mutation_data():
     md = generate_markdown_summary(report)
     assert "N/A" in md
 
+
 def test_github_formatter_total_strength():
     report = _make_report(killed=4, survived=1, covered=True)
     md = generate_markdown_summary(report)
     assert "Total Project Test Strength" in md
+
 
 def test_github_formatter_multi_component_shows_headers():
     report = ProjectReport()
@@ -462,11 +521,13 @@ def test_github_formatter_multi_component_shows_headers():
     assert "### Frontend" in md
     assert "Total Project Test Strength" in md
 
+
 def test_github_formatter_single_named_component_shows_header():
     report = ProjectReport()
     report.components["backend"] = _make_component(killed=4, survived=1, covered=True)
     md = generate_markdown_summary(report)
     assert "### Backend" in md
+
 
 def test_github_formatter_default_component_no_header():
     report = _make_report(killed=4, survived=1, covered=True)
@@ -495,9 +556,11 @@ def test_github_formatter_linked_filename_with_actions_env(monkeypatch):
 
 # --- Formatter: console ---
 
+
 def test_console_formatter_runs_without_error():
     report = _make_report(killed=1, survived=1, covered=True)
     print_summary_table(report)
+
 
 def test_console_formatter_runs_with_no_mutation_data():
     component = ComponentReport()
@@ -506,6 +569,7 @@ def test_console_formatter_runs_with_no_mutation_data():
     report = ProjectReport()
     report.components["default"] = component
     print_summary_table(report)
+
 
 def test_console_formatter_multi_component_runs_without_error():
     report = ProjectReport()
@@ -516,115 +580,162 @@ def test_console_formatter_multi_component_runs_without_error():
 
 # --- CLI ---
 
+
 def test_cli_analyze_with_coverage_and_stryker():
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "analyze",
-        "--coverage", "tests/sample_cobertura.xml",
-        "--stryker", "tests/sample_stryker.json",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--coverage",
+            "tests/sample_cobertura.xml",
+            "--stryker",
+            "tests/sample_stryker.json",
+        ],
+    )
     assert result.exit_code == 0
     assert "src/auth.py" in result.output
 
+
 def test_cli_analyze_github_format():
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "analyze",
-        "--coverage", "tests/sample_cobertura.xml",
-        "--stryker", "tests/sample_stryker.json",
-        "--format", "github",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--coverage",
+            "tests/sample_cobertura.xml",
+            "--stryker",
+            "tests/sample_stryker.json",
+            "--format",
+            "github",
+        ],
+    )
     assert result.exit_code == 0
     assert "# TQA Report Summary" in result.output
+
 
 def test_cli_analyze_fail_under_triggers_exit():
     # mutmut-only: no coverage data means all lines is_covered=False → TSI 0%
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "analyze",
-        "--mutmut", "tests/sample_mutmut.xml",
-        "--fail-under", "50",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--mutmut",
+            "tests/sample_mutmut.xml",
+            "--fail-under",
+            "50",
+        ],
+    )
     assert result.exit_code == 1
+
 
 def test_cli_analyze_with_mutant_session_json():
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "analyze",
-        "--mutant", "tests/sample_mutant_session.json",
-        "--format", "github",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--mutant",
+            "tests/sample_mutant_session.json",
+            "--format",
+            "github",
+        ],
+    )
     assert result.exit_code == 0
     assert "lib/person.rb" in result.output
     assert "Mutant::Mutator::Node::Gte" in result.output
+
 
 def test_cli_analyze_no_reports():
     runner = CliRunner()
     result = runner.invoke(main, ["analyze"])
     assert result.exit_code == 0
 
+
 def test_cli_analyze_with_config_file(tmp_path):
     config = tmp_path / "tqa.toml"
     config.write_text(
-        '[components.backend]\n'
+        "[components.backend]\n"
         'cobertura = "tests/sample_cobertura.xml"\n'
-        '[components.frontend]\n'
+        "[components.frontend]\n"
         'lcov = "tests/sample_lcov.info"\n',
         encoding="utf-8",
     )
     runner = CliRunner()
-    result = runner.invoke(main, ["analyze", "--config", str(config), "--format", "github"])
+    result = runner.invoke(
+        main, ["analyze", "--config", str(config), "--format", "github"]
+    )
     assert result.exit_code == 0
     assert "## Backend" in result.output
     assert "## Frontend" in result.output
 
+
 def test_cli_analyze_config_single_component_shows_header(tmp_path):
     config = tmp_path / "tqa.toml"
     config.write_text(
-        '[components.backend]\n'
-        'cobertura = "tests/sample_cobertura.xml"\n',
+        '[components.backend]\ncobertura = "tests/sample_cobertura.xml"\n',
         encoding="utf-8",
     )
     runner = CliRunner()
-    result = runner.invoke(main, ["analyze", "--config", str(config), "--format", "github"])
+    result = runner.invoke(
+        main, ["analyze", "--config", str(config), "--format", "github"]
+    )
     assert result.exit_code == 0
     assert "## Backend" in result.output
 
 
 # --- Input validation: empty/missing coverage data ---
 
+
 def test_parse_cobertura_empty_xml():
     component = ComponentReport()
     parse_cobertura("tests/sample_cobertura_empty.xml", component)
     assert component.files == {}
 
+
 def test_cli_warns_when_coverage_xml_has_no_files():
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "analyze",
-        "--coverage", "tests/sample_cobertura_empty.xml",
-        "--format", "github",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--coverage",
+            "tests/sample_cobertura_empty.xml",
+            "--format",
+            "github",
+        ],
+    )
     assert result.exit_code == 0
     assert "No coverage or mutation reports were detected" in result.output
 
+
 def test_cli_warns_when_coverage_xml_has_no_files_with_mutation_data():
     runner = CliRunner()
-    result = runner.invoke(main, [
-        "analyze",
-        "--coverage", "tests/sample_cobertura_empty.xml",
-        "--mutmut", "tests/sample_mutmut.xml",
-        "--format", "github",
-    ])
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--coverage",
+            "tests/sample_cobertura_empty.xml",
+            "--mutmut",
+            "tests/sample_mutmut.xml",
+            "--format",
+            "github",
+        ],
+    )
     assert result.exit_code == 0
     assert "coverage" in result.output.lower()
 
 
 # --- Parser registry ---
 
+
 def test_registry_contains_all_parsers():
     for key in ("cobertura", "stryker", "pit", "mutmut", "mutant", "lcov"):
         assert key in registry
+
 
 def test_registry_returns_correct_types():
     assert isinstance(registry.get("cobertura"), CoberturaParser)
@@ -634,58 +745,72 @@ def test_registry_returns_correct_types():
     assert isinstance(registry.get("mutant"), MutantParser)
     assert isinstance(registry.get("lcov"), LcovParser)
 
+
 def test_registry_parsers_implement_base():
     for name in registry.names():
         assert isinstance(registry.get(name), Parser)
+
 
 def test_registry_get_returns_fresh_instance():
     p1 = registry.get("cobertura")
     p2 = registry.get("cobertura")
     assert p1 is not p2
 
+
 def test_engine_run_accepts_inputs_dict():
     engine = AnalysisEngine()
     report = engine.run({"cobertura": "tests/sample_cobertura.xml"})
     assert "src/auth.py" in report.components["default"].files
+
 
 def test_engine_run_ignores_unknown_parser():
     engine = AnalysisEngine()
     report = engine.run({"unknown_format": "tests/sample_cobertura.xml"})
     assert report.components == {}
 
+
 def test_engine_run_ignores_none_paths():
     engine = AnalysisEngine()
     report = engine.run({"cobertura": None, "stryker": None})
     assert report.components == {}
 
+
 def test_engine_run_uses_multiple_parsers():
     engine = AnalysisEngine()
-    report = engine.run({
-        "cobertura": "tests/sample_cobertura.xml",
-        "stryker": "tests/sample_stryker.json",
-    })
+    report = engine.run(
+        {
+            "cobertura": "tests/sample_cobertura.xml",
+            "stryker": "tests/sample_stryker.json",
+        }
+    )
     assert "src/auth.py" in report.components["default"].files
     assert report.components["default"].files["src/auth.py"].has_mutation_data
 
+
 def test_engine_run_multi_creates_named_components():
     engine = AnalysisEngine()
-    report = engine.run_multi({
-        "backend": {"cobertura": "tests/sample_cobertura.xml"},
-        "frontend": {"lcov": "tests/sample_lcov.info"},
-    })
+    report = engine.run_multi(
+        {
+            "backend": {"cobertura": "tests/sample_cobertura.xml"},
+            "frontend": {"lcov": "tests/sample_lcov.info"},
+        }
+    )
     assert "backend" in report.components
     assert "frontend" in report.components
     assert "src/auth.py" in report.components["backend"].files
     assert "src/auth.js" in report.components["frontend"].files
 
+
 def test_engine_run_multi_reconciles_paths_per_component():
     engine = AnalysisEngine()
-    report = engine.run_multi({
-        "backend": {
-            "cobertura": "tests/sample_cobertura.xml",
-            "stryker": "tests/sample_stryker.json",
-        },
-    })
+    report = engine.run_multi(
+        {
+            "backend": {
+                "cobertura": "tests/sample_cobertura.xml",
+                "stryker": "tests/sample_stryker.json",
+            },
+        }
+    )
     backend = report.components["backend"]
     assert "src/auth.py" in backend.files
     assert backend.files["src/auth.py"].has_mutation_data

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import Dict, List, Optional
-from tqa.models import ProjectReport, ComponentReport, LineData
+from tqa.models import ProjectReport, ComponentReport, LineData, MutantStatus
 from tqa.parsers import registry
 from tqa.recommendations import recommendation_for_finding
 from tqa.source_context import read_source_context, resolve_source_path
@@ -60,7 +60,7 @@ class AnalysisEngine:
 
     @staticmethod
     def _is_killed(status: str) -> bool:
-        return status.lower() == "killed"
+        return status in (MutantStatus.KILLED, MutantStatus.TIMED_OUT)
 
     def get_surviving_mutants(
         self,

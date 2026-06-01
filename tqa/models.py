@@ -2,6 +2,41 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+class MutantStatus:
+    KILLED = "Killed"
+    SURVIVED = "Survived"
+    NO_COVERAGE = "NoCoverage"
+    TIMED_OUT = "TimedOut"
+    UNKNOWN = "Unknown"
+
+
+_STATUS_MAP: Dict[str, str] = {
+    # Canonical forms
+    "killed": MutantStatus.KILLED,
+    "survived": MutantStatus.SURVIVED,
+    "nocoverage": MutantStatus.NO_COVERAGE,
+    "no_coverage": MutantStatus.NO_COVERAGE,
+    "timedout": MutantStatus.TIMED_OUT,
+    "timed_out": MutantStatus.TIMED_OUT,
+    "timeout": MutantStatus.TIMED_OUT,
+    # Common aliases
+    "alive": MutantStatus.SURVIVED,
+    "surviving": MutantStatus.SURVIVED,
+    "dead": MutantStatus.KILLED,
+    "error": MutantStatus.KILLED,
+    "failed": MutantStatus.KILLED,
+    "process_abort": MutantStatus.KILLED,
+}
+
+
+def normalise_status(raw: str) -> str:
+    """Map any known status variant (case-insensitive) to its canonical value.
+
+    Falls back to MutantStatus.UNKNOWN for unrecognised strings.
+    """
+    return _STATUS_MAP.get(raw.lower(), MutantStatus.UNKNOWN)
+
+
 class MutantData(BaseModel):
     id: str
     status: str
@@ -18,7 +53,11 @@ class LineData(BaseModel):
     def mutation_score(self) -> float:
         if not self.mutants:
             return 1.0
-        killed = sum(1 for m in self.mutants if m.status.lower() == "killed")
+        killed = sum(
+            1
+            for m in self.mutants
+            if m.status in (MutantStatus.KILLED, MutantStatus.TIMED_OUT)
+        )
         return killed / len(self.mutants)
 
 
@@ -49,6 +88,7 @@ class FileReport(BaseModel):
 
 class ComponentReport(BaseModel):
     """Parsed data for a single technology stack within the project."""
+
     files: Dict[str, FileReport] = Field(default_factory=dict)
 
     @property
@@ -79,7 +119,8 @@ class ComponentReport(BaseModel):
             if shorter in to_delete:
                 continue
             candidates = [
-                p for p in paths
+                p
+                for p in paths
                 if p not in to_delete and p != shorter and p.endswith("/" + shorter)
             ]
             if len(candidates) != 1:
@@ -102,6 +143,7 @@ class ComponentReport(BaseModel):
 
 class ProjectReport(BaseModel):
     """Top-level report aggregating one or more ComponentReports."""
+
     components: Dict[str, ComponentReport] = Field(default_factory=dict)
 
     @property
@@ -119,7 +161,10 @@ class ProjectReport(BaseModel):
         total = sum(mutation_counts.values())
         if total == 0:
             return 0.0
-        return sum(
-            c.total_test_strength * mutation_counts[name]
-            for name, c in self.components.items()
-        ) / total
+        return (
+            sum(
+                c.total_test_strength * mutation_counts[name]
+                for name, c in self.components.items()
+            )
+            / total
+        )

@@ -1,5 +1,11 @@
 import lxml.etree as ET
-from tqa.models import ComponentReport, FileReport, LineData, MutantData
+from tqa.models import (
+    ComponentReport,
+    FileReport,
+    LineData,
+    MutantData,
+    normalise_status,
+)
 from tqa.parsers.base import Parser
 from tqa.parsers.registry import register_parser
 
@@ -12,7 +18,7 @@ class PitParser(Parser):
         for mutation in root.xpath("//mutation"):
             file_path = mutation.findtext("sourceFile")
             line = int(mutation.findtext("lineNumber"))
-            status = mutation.get("status")
+            status = normalise_status(mutation.get("status") or "")
             mutator = mutation.findtext("mutator")
             if file_path not in report.files:
                 report.files[file_path] = FileReport(file_path=file_path)

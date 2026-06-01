@@ -26,4 +26,5 @@ def register_parser(name: str) -> Callable[[Type[Parser]], Type[Parser]]:
     def decorator(cls: Type[Parser]) -> Type[Parser]:
         registry.register(name, cls)
         return cls
+
     return decorator
