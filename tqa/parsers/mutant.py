@@ -19,8 +19,17 @@ class MutantParser(Parser):
     def parse(self, path: str, report: ComponentReport) -> ComponentReport:
         """Parse native Mutant session JSON from a file or .mutant/results directory."""
         for session_path in _session_paths(path):
-            with open(session_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            try:
+                with open(session_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Failed to parse Mutant report '{session_path}': {exc}"
+                ) from exc
+            except OSError as exc:
+                raise FileNotFoundError(
+                    f"Mutant report not found: '{session_path}'"
+                ) from exc
             for result, parents in _mutation_results(data):
                 mutant = _extract_mutant(result, parents)
                 if mutant is None:

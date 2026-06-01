@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -5,6 +6,8 @@ from tqa.models import ProjectReport, ComponentReport, LineData, MutantStatus
 from tqa.parsers import registry
 from tqa.recommendations import recommendation_for_finding
 from tqa.source_context import read_source_context, resolve_source_path
+
+logger = logging.getLogger(__name__)
 
 
 class AnalysisEngine:
@@ -19,7 +22,11 @@ class AnalysisEngine:
             component = ComponentReport()
             for parser_name, path in inputs.items():
                 if path and os.path.exists(path) and parser_name in registry:
-                    registry.get(parser_name).parse(path, component)
+                    try:
+                        registry.get(parser_name).parse(path, component)
+                    except (ValueError, FileNotFoundError) as exc:
+                        logger.error("Parser error [%s]: %s", parser_name, exc)
+                        raise
             component.reconcile_paths()
             if component.files:
                 report.components[comp_name] = component

@@ -78,21 +78,26 @@ def analyze(
     """Analyze test quality by correlating reports."""
     engine = AnalysisEngine()
 
-    if config_path:
-        with open(config_path, "rb") as f:
-            config = tomllib.load(f)
-        report = engine.run_multi(config.get("components", {}))
-    else:
-        report = engine.run(
-            {
-                "cobertura": coverage_path,
-                "lcov": lcov_path,
-                "stryker": stryker_path,
-                "pit": pit_path,
-                "mutmut": mutmut_path,
-                "mutant": mutant_path,
-            }
-        )
+    try:
+        if config_path:
+            with open(config_path, "rb") as f:
+                config = tomllib.load(f)
+            report = engine.run_multi(config.get("components", {}))
+        else:
+            report = engine.run(
+                {
+                    "cobertura": coverage_path,
+                    "lcov": lcov_path,
+                    "stryker": stryker_path,
+                    "pit": pit_path,
+                    "mutmut": mutmut_path,
+                    "mutant": mutant_path,
+                }
+            )
+    except (ValueError, FileNotFoundError) as exc:
+        console = Console(stderr=True)
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise SystemExit(2) from exc
 
     if not report.components:
         if format == "console":
