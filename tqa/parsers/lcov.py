@@ -16,7 +16,7 @@ class LcovParser(Parser):
                 current_file = self._process_line(raw.strip(), report, current_file)
         return report
 
-    def _process_line(self, line: str, report: ComponentReport, current_file):
+    def _process_line(self, line: str, report: ComponentReport, current_file: FileReport | None) -> FileReport | None:
         if line.startswith("SF:"):
             file_path = line[3:]
             if file_path not in report.files:

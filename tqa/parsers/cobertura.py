@@ -20,7 +20,7 @@ class CoberturaParser(Parser):
             self._process_class_node(class_node, report)
         return report
 
-    def _process_class_node(self, class_node, report: ComponentReport) -> None:
+    def _process_class_node(self, class_node: ET._Element, report: ComponentReport) -> None:
         file_path = class_node.get("filename")
         if file_path is None:
             return
@@ -30,7 +30,7 @@ class CoberturaParser(Parser):
         for line_node in class_node.xpath("./lines/line"):
             self._process_line_node(line_node, file_report)
 
-    def _process_line_node(self, line_node, file_report: FileReport) -> None:
+    def _process_line_node(self, line_node: ET._Element, file_report: FileReport) -> None:
         number_str = line_node.get("number")
         hits_str = line_node.get("hits")
         if number_str is None or hits_str is None:
