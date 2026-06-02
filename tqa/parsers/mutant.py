@@ -19,21 +19,38 @@ class MutantParser(Parser):
     def parse(self, path: str, report: ComponentReport) -> ComponentReport:
         """Parse native Mutant session JSON from a file or .mutant/results directory."""
         for session_path in _session_paths(path):
-            with open(session_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            try:
+                with open(session_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Failed to parse Mutant report '{session_path}': {exc}"
+                ) from exc
+            except OSError as exc:
+                raise FileNotFoundError(
+                    f"Mutant report not found: '{session_path}'"
+                ) from exc
             for result, parents in _mutation_results(data):
-                mutant = _extract_mutant(result, parents)
-                if mutant is None:
-                    continue
-                file_path, line, mutant_data = mutant
-                file_path = _normalize_path(file_path)
-                if file_path not in report.files:
-                    report.files[file_path] = FileReport(file_path=file_path)
-                file_report = report.files[file_path]
-                if line not in file_report.lines:
-                    file_report.lines[line] = LineData(line_number=line)
-                file_report.lines[line].mutants.append(mutant_data)
+                self._process_mutant_result(result, parents, report)
         return report
+
+    def _process_mutant_result(
+        self,
+        result: dict,
+        parents: tuple,
+        report: ComponentReport,
+    ) -> None:
+        mutant = _extract_mutant(result, parents)
+        if mutant is None:
+            return
+        file_path, line, mutant_data = mutant
+        file_path = _normalize_path(file_path)
+        if file_path not in report.files:
+            report.files[file_path] = FileReport(file_path=file_path)
+        file_report = report.files[file_path]
+        if line not in file_report.lines:
+            file_report.lines[line] = LineData(line_number=line)
+        file_report.lines[line].mutants.append(mutant_data)
 
 
 def _session_paths(path: str) -> Iterable[Path]:

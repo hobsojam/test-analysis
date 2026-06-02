@@ -176,7 +176,7 @@ def test_cobertura_empty_file_returns_empty_report(tmp_path):
     try:
         parse_cobertura(str(p), component)
         assert component.files == {}
-    except ET.XMLSyntaxError:
+    except (ET.XMLSyntaxError, ValueError):
         pass
 
 

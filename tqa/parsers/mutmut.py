@@ -16,7 +16,12 @@ class MutmutParser(Parser):
         Older format fallback: name="mutant #N (file: F, line: L)".
         Killed = no <failure> element. Survived = <failure> present.
         """
-        tree = ET.parse(path)
+        try:
+            tree = ET.parse(path)
+        except ET.XMLSyntaxError as exc:
+            raise ValueError(f"Failed to parse mutmut report '{path}': {exc}") from exc
+        except OSError as exc:
+            raise FileNotFoundError(f"mutmut report not found: '{path}'") from exc
         root = tree.getroot()
 
         for testcase in root.xpath("//testcase"):
