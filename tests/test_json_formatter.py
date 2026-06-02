@@ -367,3 +367,28 @@ def test_cli_json_format_no_reports_produces_valid_json():
     data = json.loads(result.output)
     assert data["tsi"] is None
     assert data["components"] == {}
+
+
+# ---------------------------------------------------------------------------
+# _surviving_mutant_entry: source_line included when source_context present
+# ---------------------------------------------------------------------------
+
+
+def test_surviving_mutant_entry_includes_source_line_when_context_present():
+    from tqa.formatters.json_formatter import _surviving_mutant_entry
+
+    finding = {
+        "component": "default",
+        "file": "f.py",
+        "line": 1,
+        "covered": True,
+        "killed": 0,
+        "survived": 1,
+        "total": 1,
+        "all_survived": True,
+        "mutants": [{"description": "ArithmeticOperator", "status": "Survived"}],
+        "suggestion": "Add a test",
+        "source_context": {"text": "return x + 1", "line": 1},
+    }
+    entry = _surviving_mutant_entry(finding)
+    assert entry["source_line"] == "return x + 1"

@@ -174,3 +174,17 @@ def test_resolve_source_path_returns_none_for_traversal(tmp_path):
     outside.write_text("x\n", encoding="utf-8")
 
     assert resolve_source_path("../outside.py", str(project_root)) is None
+
+
+def test_read_source_context_returns_none_on_oserror(tmp_path, monkeypatch):
+    src = tmp_path / "app.py"
+    src.write_text("x = 1\n", encoding="utf-8")
+
+    from pathlib import Path
+
+    monkeypatch.setattr(
+        Path,
+        "read_text",
+        lambda *a, **kw: (_ for _ in ()).throw(OSError("permission denied")),
+    )
+    assert read_source_context("app.py", 1, str(tmp_path)) is None
