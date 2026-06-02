@@ -25,7 +25,7 @@ class AnalysisEngine:
                     try:
                         registry.get(parser_name).parse(path, component)
                     except (ValueError, FileNotFoundError) as exc:
-                        logger.error("Parser error [%s]: %s", parser_name, exc)
+                        logger.exception("Parser error [%s]: %s", parser_name, exc)
                         raise
             component.reconcile_paths()
             if component.files:
