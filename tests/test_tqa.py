@@ -814,3 +814,101 @@ def test_engine_run_multi_reconciles_paths_per_component():
     backend = report.components["backend"]
     assert "src/auth.py" in backend.files
     assert backend.files["src/auth.py"].has_mutation_data
+
+
+# --- CLI: sonarcloud format with no reports ---
+
+
+def test_cli_sonarcloud_format_with_no_reports(tmp_path):
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        result = runner.invoke(main, ["analyze", "--format", "sonarcloud"])
+    assert result.exit_code == 0
+    assert "Quality Unknown" in result.output
+
+
+# --- CLI: export-svg ---
+
+
+def test_cli_export_svg(tmp_path):
+    svg_path = str(tmp_path / "out.svg")
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--coverage",
+            "tests/sample_cobertura.xml",
+            "--format",
+            "console",
+            "--export-svg",
+            svg_path,
+        ],
+    )
+    assert result.exit_code == 0
+    assert Path(svg_path).exists()
+    assert "<svg" in Path(svg_path).read_text(encoding="utf-8")
+
+
+# --- Models: FileReport.line_coverage when no lines ---
+
+
+def test_file_report_line_coverage_when_no_lines():
+    assert FileReport(file_path="empty.py").line_coverage == 0.0
+
+
+# --- Models: reconcile_paths continue when ambiguous (multiple longer matches) ---
+
+
+def test_reconcile_paths_skips_when_ambiguous():
+    comp = ComponentReport()
+    comp.files["a.py"] = FileReport(file_path="a.py")
+    comp.files["b/a.py"] = FileReport(file_path="b/a.py")
+    comp.files["c/a.py"] = FileReport(file_path="c/a.py")
+    comp.reconcile_paths()
+    # "a.py" matches both "b/a.py" and "c/a.py" — ambiguous, nothing merged
+    assert "a.py" in comp.files
+    assert "b/a.py" in comp.files
+    assert "c/a.py" in comp.files
+
+
+# --- Models: reconcile_paths sets is_covered=True from src line ---
+
+
+def test_reconcile_paths_merges_covered_status():
+    comp = ComponentReport()
+    comp.files["auth.py"] = FileReport(file_path="auth.py")
+    comp.files["auth.py"].lines[5] = LineData(line_number=5, is_covered=True)
+    comp.files["tqa/auth.py"] = FileReport(file_path="tqa/auth.py")
+    comp.files["tqa/auth.py"].lines[5] = LineData(line_number=5, is_covered=False)
+    comp.reconcile_paths()
+    assert "auth.py" not in comp.files
+    assert comp.files["tqa/auth.py"].lines[5].is_covered is True
+
+
+# --- Engine: _resolve_source_path wrapper ---
+
+
+def test_engine_resolve_source_path_returns_path(tmp_path):
+    src = tmp_path / "app.py"
+    src.write_text("x = 1\n", encoding="utf-8")
+    result = AnalysisEngine()._resolve_source_path("app.py", str(tmp_path))
+    assert result is not None
+    assert result.name == "app.py"
+
+
+# --- mutmut parser: testcase with no name and no file/line is skipped ---
+
+
+def test_mutmut_parser_skips_nameless_locationless_testcase(tmp_path):
+    xml = (
+        '<?xml version="1.0"?>'
+        '<testsuites><testsuite name="mutmut">'
+        "<testcase/>"
+        "</testsuite></testsuites>"
+    )
+    p = tmp_path / "mutmut.xml"
+    p.write_text(xml, encoding="utf-8")
+    component = ComponentReport()
+    parse_mutmut(str(p), component)
+    assert component.files == {}

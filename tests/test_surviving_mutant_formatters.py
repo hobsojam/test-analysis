@@ -633,3 +633,58 @@ def test_console_formatter_omits_source_column_when_no_context():
     _render_surviving_mutants(console, findings)
     output = buf.getvalue()
     assert "Source" not in output
+
+
+# ---------------------------------------------------------------------------
+# github._detect_language
+# ---------------------------------------------------------------------------
+
+
+def test_detect_language_returns_java_for_java_files():
+    from tqa.formatters.github import _detect_language
+
+    comp = ComponentReport()
+    comp.files["src/Main.java"] = FileReport(file_path="src/Main.java")
+    assert _detect_language(comp) == "java"
+
+
+# ---------------------------------------------------------------------------
+# github._source_cell
+# ---------------------------------------------------------------------------
+
+
+def test_source_cell_returns_empty_string_when_no_source_context():
+    from tqa.formatters.github import _source_cell
+
+    assert _source_cell({"file": "f.py", "line": 1}) == ""
+
+
+def test_source_cell_returns_empty_string_when_source_context_is_none():
+    from tqa.formatters.github import _source_cell
+
+    assert _source_cell({"file": "f.py", "line": 1, "source_context": None}) == ""
+
+
+# ---------------------------------------------------------------------------
+# github.print_github_annotations
+# ---------------------------------------------------------------------------
+
+
+def test_print_github_annotations_writes_warning_to_stderr(capsys):
+    from tqa.formatters.github import print_github_annotations
+
+    report = ProjectReport()
+    comp = ComponentReport()
+    comp.files["f.py"] = FileReport(file_path="f.py")
+    comp.files["f.py"].lines[10] = LineData(
+        line_number=10,
+        is_covered=True,
+        mutants=[MutantData(id="1", status="Survived", line=10)],
+    )
+    report.components["default"] = comp
+
+    print_github_annotations(report)
+    err = capsys.readouterr().err
+    assert "::warning" in err
+    assert "f.py" in err
+    assert "10" in err
