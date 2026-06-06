@@ -9,7 +9,7 @@ from typing import Any
 
 from tqa.engine import AnalysisEngine
 from tqa.formatters.surviving_mutants import source_line_text
-from tqa.models import ComponentReport, FileReport, ProjectReport
+from tqa.models import ComponentReport, FileReport, MutantStatus, ProjectReport
 
 
 def _file_lines(file_report: FileReport) -> list[dict[str, Any]]:
@@ -19,7 +19,7 @@ def _file_lines(file_report: FileReport) -> list[dict[str, Any]]:
         line_data = file_report.lines[line_num]
         if not line_data.mutants:
             continue
-        killed = sum(1 for m in line_data.mutants if m.status.lower() == "killed")
+        killed = sum(1 for m in line_data.mutants if m.status in (MutantStatus.KILLED, MutantStatus.TIMED_OUT))
         survived = len(line_data.mutants) - killed
         result.append(
             {

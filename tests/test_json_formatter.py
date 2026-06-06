@@ -12,6 +12,7 @@ from tqa.models import (
     FileReport,
     LineData,
     MutantData,
+    MutantStatus,
     ProjectReport,
 )
 
@@ -392,3 +393,57 @@ def test_surviving_mutant_entry_includes_source_line_when_context_present():
     }
     entry = _surviving_mutant_entry(finding)
     assert entry["source_line"] == "return x + 1"
+
+
+# ---------------------------------------------------------------------------
+# TimedOut mutants counted as killed (regression tests for the bug fix)
+# ---------------------------------------------------------------------------
+
+
+def test_timedout_mutant_counted_as_killed_in_file_lines():
+    """A TimedOut mutant must appear in killed, not survived, in the per-line JSON output."""
+    report = ProjectReport()
+    component = ComponentReport()
+    component.files["src/calc.py"] = FileReport(file_path="src/calc.py")
+    component.files["src/calc.py"].lines[5] = LineData(
+        line_number=5,
+        is_covered=True,
+        mutants=[
+            MutantData(id="1", status=MutantStatus.TIMED_OUT, line=5, description="BoundaryCheck"),
+            MutantData(id="2", status=MutantStatus.SURVIVED, line=5, description="ArithmeticOperator"),
+        ],
+    )
+    report.components["default"] = component
+
+    data = generate_json_report(report)
+    line = data["components"]["default"]["files"]["src/calc.py"]["lines"][0]
+    assert line["killed"] == 1, "TimedOut mutant should be counted as killed"
+    assert line["survived"] == 1, "Only the Survived mutant should be in survived"
+
+
+def test_timedout_killed_count_consistent_with_tsi():
+    """The per-line killed/total ratio must be consistent with the top-level TSI."""
+    report = ProjectReport()
+    component = ComponentReport()
+    component.files["src/calc.py"] = FileReport(file_path="src/calc.py")
+    component.files["src/calc.py"].lines[5] = LineData(
+        line_number=5,
+        is_covered=True,
+        mutants=[
+            MutantData(id="1", status=MutantStatus.TIMED_OUT, line=5, description="BoundaryCheck"),
+            MutantData(id="2", status=MutantStatus.SURVIVED, line=5, description="ArithmeticOperator"),
+        ],
+    )
+    report.components["default"] = component
+
+    data = generate_json_report(report)
+    line = data["components"]["default"]["files"]["src/calc.py"]["lines"][0]
+
+    killed = line["killed"]
+    total = killed + line["survived"]
+    per_line_ratio = killed / total  # 0.5
+
+    top_level_tsi = data["tsi"]
+    assert top_level_tsi == pytest.approx(per_line_ratio), (
+        "Top-level TSI must match per-line killed/total ratio when TimedOut is counted as killed"
+    )
