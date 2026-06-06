@@ -21,7 +21,7 @@ class PitParser(Parser):
             raise FileNotFoundError(f"PIT report not found: '{path}'") from exc
         root = tree.getroot()
         try:
-            for mutation in root.xpath("//mutation"):
+            for i, mutation in enumerate(root.xpath("//mutation")):
                 file_path = mutation.findtext("sourceFile")
                 line_text = mutation.findtext("lineNumber")
                 if file_path is None or line_text is None:
@@ -39,7 +39,7 @@ class PitParser(Parser):
                     file_report.lines[line] = LineData(line_number=line)
                 file_report.lines[line].mutants.append(
                     MutantData(
-                        id=f"pit-{hash(mutation)}",
+                        id=f"pit-{i}",
                         status=status,
                         line=line,
                         description=mutator,

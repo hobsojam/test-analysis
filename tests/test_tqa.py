@@ -941,3 +941,26 @@ def test_cli_version_flag():
     assert result.exit_code == 0
     assert "tqa" in result.output
     assert "0.1.0" in result.output
+
+
+# --- PIT parser: stable sequential mutant IDs ---
+
+
+def test_pit_mutant_ids_are_stable_across_parses():
+    c1 = ComponentReport()
+    parse_pit("tests/sample_pit.xml", c1)
+    c2 = ComponentReport()
+    parse_pit("tests/sample_pit.xml", c2)
+    ids1 = sorted(m.id for fr in c1.files.values() for ld in fr.lines.values() for m in ld.mutants)
+    ids2 = sorted(m.id for fr in c2.files.values() for ld in fr.lines.values() for m in ld.mutants)
+    assert ids1 == ids2
+
+
+def test_pit_mutant_ids_have_expected_format():
+    component = ComponentReport()
+    parse_pit("tests/sample_pit.xml", component)
+    for fr in component.files.values():
+        for ld in fr.lines.values():
+            for m in ld.mutants:
+                assert m.id.startswith("pit-")
+                assert m.id[4:].isdigit()
