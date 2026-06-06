@@ -469,7 +469,11 @@ def _make_healthy_report() -> ProjectReport:
 def test_github_formatter_contains_header():
     report = _make_healthy_report()
     md = generate_markdown_summary(report)
-    assert "# TQA Report Summary" in md
+    assert "## TQA Report Summary" in md
+    # Verify it is H2, not H1 — use line-start anchor to avoid substring false-positive
+    assert not any(
+        line == "# TQA Report Summary" for line in md.splitlines()
+    ), "Header must be H2 (##), not H1 (#)"
 
 
 def test_github_formatter_shows_tsi_percentage():
