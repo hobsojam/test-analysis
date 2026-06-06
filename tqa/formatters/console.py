@@ -82,7 +82,7 @@ def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
         )
 
 
-def print_summary_table(report: ProjectReport, console: Console | None = None) -> None:
+def print_summary_table(report: ProjectReport, console: Console | None = None, findings: list[dict] | None = None) -> None:
     if console is None:
         console = Console(legacy_windows=False, width=160)
     multi = len(report.components) > 1 or (
@@ -125,4 +125,6 @@ def print_summary_table(report: ProjectReport, console: Console | None = None) -
             f"\n[bold]Total Project Test Strength:[/] [green]{report.total_test_strength * 100:.1f}%[/]"
         )
 
-    _render_surviving_mutants(console, AnalysisEngine().get_surviving_mutants(report))
+    if findings is None:
+        findings = AnalysisEngine().get_surviving_mutants(report)
+    _render_surviving_mutants(console, findings)

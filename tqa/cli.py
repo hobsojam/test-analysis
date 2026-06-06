@@ -63,6 +63,20 @@ def main() -> None:
     default=None,
     help="Export console output as SVG",
 )
+@click.option(
+    "--project-root",
+    "project_root",
+    type=click.Path(),
+    default=None,
+    help="Project root directory for source context in surviving mutant findings",
+)
+@click.option(
+    "--context-lines",
+    "context_lines",
+    type=int,
+    default=0,
+    help="Number of source lines of context to show around each surviving mutant (requires --project-root)",
+)
 def analyze(
     config_path: str,
     coverage_path: str,
@@ -74,6 +88,8 @@ def analyze(
     format: str,
     fail_under: float,
     export_svg: str,
+    project_root: str,
+    context_lines: int,
 ) -> None:
     """Analyze test quality by correlating reports."""
     engine = AnalysisEngine()
@@ -130,20 +146,28 @@ def analyze(
             )
         return
 
+    # Pre-compute surviving mutant findings with optional source context
+    if project_root is not None:
+        surviving_findings = engine.get_surviving_mutants(
+            report, project_root=project_root, context_lines=context_lines
+        )
+    else:
+        surviving_findings = None  # formatters will compute their own
+
     if format == "console":
         if export_svg:
             recording = Console(record=True, legacy_windows=False, width=160)
-            print_summary_table(report, console=recording)
+            print_summary_table(report, console=recording, findings=surviving_findings)
             recording.save_svg(export_svg, title="TQA — Test Quality Summary")
         else:
-            print_summary_table(report)
+            print_summary_table(report, findings=surviving_findings)
     elif format == "github":
-        click.echo(generate_markdown_summary(report))
+        click.echo(generate_markdown_summary(report, findings=surviving_findings))
         print_github_annotations(report)
     elif format == "sonarcloud":
         write_sonarcloud_report(report)
         click.echo(f"Wrote {SONARCLOUD_REPORT_PATH}", err=True)
-        click.echo(generate_markdown_summary(report))
+        click.echo(generate_markdown_summary(report, findings=surviving_findings))
     elif format == "json":
         click.echo(print_json_report(report))
 
