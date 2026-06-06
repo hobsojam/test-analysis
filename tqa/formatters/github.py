@@ -186,7 +186,11 @@ def generate_markdown_summary(report: ProjectReport) -> str:
             )
         lines.append("")
 
-    gaps = engine.get_critical_gaps(report)
+    gaps = [
+        {"file": f["file"], "line": f["line"], "survived": f["survived"]}
+        for f in surviving_mutants
+        if f["covered"] and f["all_survived"]
+    ]
     if gaps:
         lines.append("## Critical Gaps (covered but 0% killed)")
         lines.append("| File | Line | Survived Mutants |")
@@ -200,7 +204,12 @@ def generate_markdown_summary(report: ProjectReport) -> str:
 
 def print_github_annotations(report: ProjectReport) -> None:
     engine = AnalysisEngine()
-    gaps = engine.get_critical_gaps(report)
+    surviving_mutants = engine.get_surviving_mutants(report)
+    gaps = [
+        {"file": f["file"], "line": f["line"], "survived": f["survived"]}
+        for f in surviving_mutants
+        if f["covered"] and f["all_survived"]
+    ]
     for gap in gaps:
         print(
             f"::warning file={gap['file']},line={gap['line']}::"

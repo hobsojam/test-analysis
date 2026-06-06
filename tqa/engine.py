@@ -1,11 +1,10 @@
 import logging
 import os
-from pathlib import Path
 from typing import Dict, List, Optional
 from tqa.models import ProjectReport, ComponentReport, LineData, MutantStatus
 from tqa.parsers import registry
 from tqa.recommendations import recommendation_for_finding
-from tqa.source_context import read_source_context, resolve_source_path
+from tqa.source_context import read_source_context
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +109,6 @@ class AnalysisEngine:
     ) -> Optional[dict]:
         """Return source text around a line, constrained to project_root."""
         return read_source_context(file_path, line_number, project_root, context_lines)
-
-    def _resolve_source_path(self, file_path: str, project_root: str) -> Optional[Path]:
-        return resolve_source_path(file_path, project_root)
 
     def get_critical_gaps(self, report: ProjectReport) -> List[dict]:
         """Identifies covered lines with mutation data but 0% mutation kill rate."""

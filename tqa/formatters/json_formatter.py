@@ -86,7 +86,11 @@ def generate_json_report(report: ProjectReport) -> dict[str, Any]:
     """Return a dict representing the full analysis result in machine-readable form."""
     engine = AnalysisEngine()
     surviving_mutants = engine.get_surviving_mutants(report)
-    critical_gaps = engine.get_critical_gaps(report)
+    critical_gaps = [
+        {"file": f["file"], "line": f["line"], "survived": f["survived"]}
+        for f in surviving_mutants
+        if f["covered"] and f["all_survived"]
+    ]
 
     return {
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
