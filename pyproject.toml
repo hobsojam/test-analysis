@@ -9,7 +9,7 @@ description = "Test Quality Analyzer - Correlate coverage and mutation testing"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "Gemini CLI" }
+    { name = "James Hobson", email = "hobson.james@gmail.com" }
 ]
 dependencies = [
     "click>=8.0.0",
@@ -28,6 +28,7 @@ dev = [
     "mutmut>=2.4.0,<3.0.0",
     "mypy>=1.0.0",
     "hypothesis>=6.0.0",
+    "ruff>=0.15.0",
 ]
 
 [project.scripts]
