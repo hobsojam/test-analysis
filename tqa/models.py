@@ -1,8 +1,9 @@
+from enum import Enum
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
-class MutantStatus:
+class MutantStatus(str, Enum):
     KILLED = "Killed"
     SURVIVED = "Survived"
     NO_COVERAGE = "NoCoverage"
@@ -10,7 +11,7 @@ class MutantStatus:
     UNKNOWN = "Unknown"
 
 
-_STATUS_MAP: Dict[str, str] = {
+_STATUS_MAP: Dict[str, MutantStatus] = {
     # Canonical forms
     "killed": MutantStatus.KILLED,
     "survived": MutantStatus.SURVIVED,
