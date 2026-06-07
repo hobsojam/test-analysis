@@ -135,7 +135,7 @@ def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
     return rows
 
 
-def generate_markdown_summary(report: ProjectReport) -> str:
+def generate_markdown_summary(report: ProjectReport, findings: list[dict] | None = None) -> str:
     lines = ["## TQA Report Summary", ""]
     # Show per-component headers when there are multiple components, or when
     # a single component has an explicit name (i.e. came from a config file).
@@ -174,7 +174,7 @@ def generate_markdown_summary(report: ProjectReport) -> str:
         lines.append("")
 
     engine = AnalysisEngine()
-    surviving_mutants = engine.get_surviving_mutants(report)
+    surviving_mutants = findings if findings is not None else engine.get_surviving_mutants(report)
     if surviving_mutants:
         lines.append("**Surviving Mutants**")
         lines.append("")

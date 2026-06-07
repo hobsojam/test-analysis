@@ -686,6 +686,34 @@ def test_cli_analyze_config_single_component_shows_header(tmp_path):
     assert "## Backend" in result.output
 
 
+def test_cli_analyze_with_project_root_flag(tmp_path):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--coverage", "tests/sample_cobertura.xml",
+            "--stryker", "tests/sample_stryker.json",
+            "--project-root", str(tmp_path),
+            "--context-lines", "1",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_cli_analyze_context_lines_without_project_root_is_ignored():
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "analyze",
+            "--coverage", "tests/sample_cobertura.xml",
+            "--context-lines", "3",
+        ],
+    )
+    assert result.exit_code == 0
+
+
 # --- Input validation: empty/missing coverage data ---
 
 
