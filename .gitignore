@@ -43,6 +43,7 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
+.mutmut-cache
 
 # Environments
 .env
