@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypedDict
 from pydantic import BaseModel, Field
 
 
@@ -169,3 +169,37 @@ class ProjectReport(BaseModel):
             )
             / total
         )
+
+
+class SurvivingMutantEntry(TypedDict):
+    id: str
+    status: MutantStatus
+    description: Optional[str]
+
+
+class _SurvivingMutantFindingRequired(TypedDict):
+    component: str
+    file: str
+    line: int
+    covered: bool
+    killed: int
+    survived: int
+    total: int
+    all_survived: bool
+    mutants: List[SurvivingMutantEntry]
+    suggestion: Optional[str]
+
+
+class SurvivingMutantFinding(_SurvivingMutantFindingRequired, total=False):
+    """Structured finding for a line with unkilled mutants.
+
+    source_context is present only when --project-root is supplied.
+    """
+
+    source_context: Optional[Dict]
+
+
+class CriticalGap(TypedDict):
+    file: str
+    line: int
+    survived: int

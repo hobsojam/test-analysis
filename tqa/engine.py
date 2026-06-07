@@ -1,7 +1,15 @@
 import logging
 import os
 from typing import Dict, List, Optional
-from tqa.models import ProjectReport, ComponentReport, LineData, MutantStatus
+from tqa.models import (
+    ProjectReport,
+    ComponentReport,
+    LineData,
+    MutantStatus,
+    CriticalGap,
+    SurvivingMutantFinding,
+    SurvivingMutantEntry,
+)
 from tqa.parsers import registry
 from tqa.recommendations import recommendation_for_finding
 from tqa.source_context import read_source_context
@@ -37,32 +45,34 @@ class AnalysisEngine:
         file_path: str,
         line_num: int,
         line_data: LineData,
-    ) -> dict | None:
+    ) -> SurvivingMutantFinding | None:
         killed = sum(
             1 for mutant in line_data.mutants if self._is_killed(mutant.status)
         )
         survived = len(line_data.mutants) - killed
         if survived == 0:
             return None
-        return {
-            "component": component_name,
-            "file": file_path,
-            "line": line_num,
-            "covered": line_data.is_covered,
-            "killed": killed,
-            "survived": survived,
-            "total": len(line_data.mutants),
-            "all_survived": killed == 0,
-            "mutants": [
-                {
-                    "id": mutant.id,
-                    "status": mutant.status,
-                    "description": mutant.description,
-                }
-                for mutant in line_data.mutants
-                if not self._is_killed(mutant.status)
-            ],
-        }
+        surviving_mutants: List[SurvivingMutantEntry] = [
+            SurvivingMutantEntry(
+                id=mutant.id,
+                status=mutant.status,
+                description=mutant.description,
+            )
+            for mutant in line_data.mutants
+            if not self._is_killed(mutant.status)
+        ]
+        return SurvivingMutantFinding(
+            component=component_name,
+            file=file_path,
+            line=line_num,
+            covered=line_data.is_covered,
+            killed=killed,
+            survived=survived,
+            total=len(line_data.mutants),
+            all_survived=killed == 0,
+            mutants=surviving_mutants,
+            suggestion=None,
+        )
 
     @staticmethod
     def _is_killed(status: str) -> bool:
@@ -73,9 +83,9 @@ class AnalysisEngine:
         report: ProjectReport,
         project_root: Optional[str] = None,
         context_lines: int = 0,
-    ) -> List[dict]:
+    ) -> List[SurvivingMutantFinding]:
         """Return structured findings for lines with unkilled mutants."""
-        findings = []
+        findings: List[SurvivingMutantFinding] = []
         for component_name, component in report.components.items():
             for file_path, file_report in component.files.items():
                 for line_num, line_data in file_report.lines.items():
@@ -110,16 +120,15 @@ class AnalysisEngine:
         """Return source text around a line, constrained to project_root."""
         return read_source_context(file_path, line_number, project_root, context_lines)
 
-    def get_critical_gaps(self, report: ProjectReport) -> List[dict]:
+    def get_critical_gaps(
+        self,
+        report: ProjectReport,
+        findings: Optional[List[SurvivingMutantFinding]] = None,
+    ) -> List[CriticalGap]:
         """Identifies covered lines with mutation data but 0% mutation kill rate."""
-        gaps = []
-        for finding in self.get_surviving_mutants(report):
-            if finding["covered"] and finding["all_survived"]:
-                gaps.append(
-                    {
-                        "file": finding["file"],
-                        "line": finding["line"],
-                        "survived": finding["survived"],
-                    }
-                )
-        return gaps
+        source = findings if findings is not None else self.get_surviving_mutants(report)
+        return [
+            CriticalGap(file=f["file"], line=f["line"], survived=f["survived"])
+            for f in source
+            if f["covered"] and f["all_survived"]
+        ]

@@ -12,6 +12,7 @@ from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary, print_github_annotations
 from tqa.formatters.json_formatter import print_json_report
 from tqa.formatters.sonarcloud import SONARCLOUD_REPORT_PATH, write_sonarcloud_report
+from tqa.models import SurvivingMutantFinding
 
 
 @click.group()
@@ -149,6 +150,7 @@ def analyze(
         return
 
     # Pre-compute surviving mutant findings with optional source context
+    surviving_findings: list[SurvivingMutantFinding] | None
     if project_root is not None:
         surviving_findings = engine.get_surviving_mutants(
             report, project_root=project_root, context_lines=context_lines

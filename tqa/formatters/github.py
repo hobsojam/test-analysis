@@ -10,7 +10,7 @@ from tqa.formatters.surviving_mutants import (
     suggestion_label,
     sorted_surviving_findings,
 )
-from tqa.models import ProjectReport, ComponentReport
+from tqa.models import ProjectReport, ComponentReport, SurvivingMutantFinding
 
 
 def _blob_base_url() -> str | None:
@@ -105,7 +105,7 @@ def _source_cell(finding: dict) -> str:
     return f"`{escaped}`"
 
 
-def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
+def _surviving_mutant_rows(findings: list[SurvivingMutantFinding]) -> list[str]:
     limited = sorted_surviving_findings(findings)[:SURVIVING_MUTANT_LIMIT]
     has_source = any(source_line_text(f) is not None for f in limited)
     if has_source:
@@ -135,7 +135,7 @@ def _surviving_mutant_rows(findings: list[dict]) -> list[str]:
     return rows
 
 
-def generate_markdown_summary(report: ProjectReport, findings: list[dict] | None = None) -> str:
+def generate_markdown_summary(report: ProjectReport, findings: list[SurvivingMutantFinding] | None = None) -> str:
     lines = ["## TQA Report Summary", ""]
     # Show per-component headers when there are multiple components, or when
     # a single component has an explicit name (i.e. came from a config file).
@@ -186,11 +186,7 @@ def generate_markdown_summary(report: ProjectReport, findings: list[dict] | None
             )
         lines.append("")
 
-    gaps = [
-        {"file": f["file"], "line": f["line"], "survived": f["survived"]}
-        for f in surviving_mutants
-        if f["covered"] and f["all_survived"]
-    ]
+    gaps = engine.get_critical_gaps(report, findings=surviving_mutants)
     if gaps:
         lines.append("## Critical Gaps (covered but 0% killed)")
         lines.append("| File | Line | Survived Mutants |")
@@ -202,14 +198,12 @@ def generate_markdown_summary(report: ProjectReport, findings: list[dict] | None
     return "\n".join(lines)
 
 
-def print_github_annotations(report: ProjectReport) -> None:
+def print_github_annotations(
+    report: ProjectReport, findings: list[SurvivingMutantFinding] | None = None
+) -> None:
     engine = AnalysisEngine()
-    surviving_mutants = engine.get_surviving_mutants(report)
-    gaps = [
-        {"file": f["file"], "line": f["line"], "survived": f["survived"]}
-        for f in surviving_mutants
-        if f["covered"] and f["all_survived"]
-    ]
+    surviving_mutants = findings if findings is not None else engine.get_surviving_mutants(report)
+    gaps = engine.get_critical_gaps(report, findings=surviving_mutants)
     for gap in gaps:
         print(
             f"::warning file={gap['file']},line={gap['line']}::"

@@ -9,7 +9,7 @@ from typing import Any
 
 from tqa.engine import AnalysisEngine
 from tqa.formatters.surviving_mutants import source_line_text
-from tqa.models import ComponentReport, FileReport, MutantStatus, ProjectReport
+from tqa.models import ComponentReport, FileReport, MutantStatus, ProjectReport, SurvivingMutantFinding
 
 
 def _file_lines(file_report: FileReport) -> list[dict[str, Any]]:
@@ -59,7 +59,7 @@ def _component_entry(component: ComponentReport) -> dict[str, Any]:
     }
 
 
-def _surviving_mutant_entry(finding: dict) -> dict[str, Any]:
+def _surviving_mutant_entry(finding: SurvivingMutantFinding) -> dict[str, Any]:
     entry: dict[str, Any] = {
         "component": finding["component"],
         "file": finding["file"],
@@ -82,15 +82,13 @@ def _surviving_mutant_entry(finding: dict) -> dict[str, Any]:
     return entry
 
 
-def generate_json_report(report: ProjectReport) -> dict[str, Any]:
+def generate_json_report(
+    report: ProjectReport, findings: list[SurvivingMutantFinding] | None = None
+) -> dict[str, Any]:
     """Return a dict representing the full analysis result in machine-readable form."""
     engine = AnalysisEngine()
-    surviving_mutants = engine.get_surviving_mutants(report)
-    critical_gaps = [
-        {"file": f["file"], "line": f["line"], "survived": f["survived"]}
-        for f in surviving_mutants
-        if f["covered"] and f["all_survived"]
-    ]
+    surviving_mutants = findings if findings is not None else engine.get_surviving_mutants(report)
+    critical_gaps = engine.get_critical_gaps(report, findings=surviving_mutants)
 
     return {
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -104,7 +102,9 @@ def generate_json_report(report: ProjectReport) -> dict[str, Any]:
     }
 
 
-def print_json_report(report: ProjectReport) -> str:
+def print_json_report(
+    report: ProjectReport, findings: list[SurvivingMutantFinding] | None = None
+) -> str:
     """Serialise the analysis result to a JSON string and return it."""
-    data = generate_json_report(report)
+    data = generate_json_report(report, findings=findings)
     return json.dumps(data, indent=2, sort_keys=True)
