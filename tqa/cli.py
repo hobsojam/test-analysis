@@ -1,4 +1,5 @@
 import sys
+from importlib.metadata import version as _pkg_version
 
 try:
     import tomllib
@@ -14,6 +15,7 @@ from tqa.formatters.sonarcloud import SONARCLOUD_REPORT_PATH, write_sonarcloud_r
 
 
 @click.group()
+@click.version_option(version=_pkg_version("tqa"), prog_name="tqa")
 def main() -> None:
     """TQA - Test Quality Analyzer"""
     pass

@@ -940,3 +940,11 @@ def test_mutmut_parser_skips_nameless_locationless_testcase(tmp_path):
     component = ComponentReport()
     parse_mutmut(str(p), component)
     assert component.files == {}
+
+
+def test_cli_version_flag():
+    runner = CliRunner()
+    result = runner.invoke(main, ["--version"])
+    assert result.exit_code == 0
+    assert "tqa" in result.output
+    assert "0.1.0" in result.output
