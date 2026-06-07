@@ -6,7 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from tqa.cli import main
-from tqa.formatters.json_formatter import generate_json_report, print_json_report
+from tqa.formatters.json_formatter import generate_json_report, format_json_report
 from tqa.models import (
     ComponentReport,
     FileReport,
@@ -300,14 +300,14 @@ def test_json_report_critical_gap_present_when_all_survived_and_covered():
 # ---------------------------------------------------------------------------
 
 
-def test_print_json_report_returns_valid_json():
-    output = print_json_report(_report_with_survivors())
+def test_format_json_report_returns_valid_json():
+    output = format_json_report(_report_with_survivors())
     parsed = json.loads(output)
     assert "tsi" in parsed
 
 
-def test_print_json_report_is_indented():
-    output = print_json_report(_report_with_survivors())
+def test_format_json_report_is_indented():
+    output = format_json_report(_report_with_survivors())
     # Indented JSON has newlines beyond the first
     assert "\n" in output
 

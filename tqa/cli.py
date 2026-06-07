@@ -10,7 +10,7 @@ from rich.console import Console
 from tqa.engine import AnalysisEngine
 from tqa.formatters.console import print_summary_table
 from tqa.formatters.github import generate_markdown_summary, print_github_annotations
-from tqa.formatters.json_formatter import print_json_report
+from tqa.formatters.json_formatter import format_json_report
 from tqa.formatters.sonarcloud import SONARCLOUD_REPORT_PATH, write_sonarcloud_report
 from tqa.models import SurvivingMutantFinding
 
@@ -50,6 +50,7 @@ def main() -> None:
 )
 @click.option(
     "--format",
+    "output_format",
     type=click.Choice(["console", "github", "sonarcloud", "json"]),
     default="console",
 )
@@ -88,7 +89,7 @@ def analyze(
     pit_path: str,
     mutmut_path: str,
     mutant_path: str,
-    format: str,
+    output_format: str,
     fail_under: float,
     export_svg: str,
     project_root: str,
@@ -118,8 +119,13 @@ def analyze(
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise SystemExit(2) from exc
 
+    if context_lines > 0 and project_root is None:
+        click.echo(
+            "Warning: --context-lines has no effect without --project-root.", err=True
+        )
+
     if not report.components:
-        if format == "console":
+        if output_format == "console":
             console = Console()
             console.print("\n[bold yellow]⚠️ No quality data found.[/]")
             console.print(
@@ -132,10 +138,10 @@ def analyze(
             console.print(
                 "2. Mutation: Use `stryker run` (JS), `pitest` (Java), or `mutmut run` (Python)"
             )
-        elif format == "json":
-            click.echo(print_json_report(report))
-        elif format in ("github", "sonarcloud"):
-            if format == "sonarcloud":
+        elif output_format == "json":
+            click.echo(format_json_report(report))
+        elif output_format in ("github", "sonarcloud"):
+            if output_format == "sonarcloud":
                 write_sonarcloud_report(report)
                 click.echo(f"Wrote {SONARCLOUD_REPORT_PATH}", err=True)
             click.echo("# 🛡️ TQA: Quality Unknown")
@@ -158,22 +164,22 @@ def analyze(
     else:
         surviving_findings = None  # formatters will compute their own
 
-    if format == "console":
+    if output_format == "console":
         if export_svg:
             recording = Console(record=True, legacy_windows=False, width=160)
             print_summary_table(report, console=recording, findings=surviving_findings)
             recording.save_svg(export_svg, title="TQA — Test Quality Summary")
         else:
             print_summary_table(report, findings=surviving_findings)
-    elif format == "github":
+    elif output_format == "github":
         click.echo(generate_markdown_summary(report, findings=surviving_findings))
-        print_github_annotations(report)
-    elif format == "sonarcloud":
+        print_github_annotations(report, findings=surviving_findings)
+    elif output_format == "sonarcloud":
         write_sonarcloud_report(report)
         click.echo(f"Wrote {SONARCLOUD_REPORT_PATH}", err=True)
         click.echo(generate_markdown_summary(report, findings=surviving_findings))
-    elif format == "json":
-        click.echo(print_json_report(report))
+    elif output_format == "json":
+        click.echo(format_json_report(report, findings=surviving_findings))
 
     if report.total_test_strength * 100 < fail_under:
         click.echo(

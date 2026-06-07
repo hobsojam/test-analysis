@@ -75,7 +75,7 @@ class AnalysisEngine:
         )
 
     @staticmethod
-    def _is_killed(status: str) -> bool:
+    def _is_killed(status: MutantStatus) -> bool:
         return status in (MutantStatus.KILLED, MutantStatus.TIMED_OUT)
 
     def get_surviving_mutants(

@@ -102,7 +102,7 @@ def generate_json_report(
     }
 
 
-def print_json_report(
+def format_json_report(
     report: ProjectReport, findings: list[SurvivingMutantFinding] | None = None
 ) -> str:
     """Serialise the analysis result to a JSON string and return it."""
