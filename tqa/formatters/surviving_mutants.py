@@ -1,7 +1,9 @@
+from tqa.models import SurvivingMutantFinding
+
 SURVIVING_MUTANT_LIMIT = 10
 
 
-def source_line_text(finding: dict) -> str | None:
+def source_line_text(finding: SurvivingMutantFinding) -> str | None:
     """Return the raw source line text from a finding's source_context, or None."""
     ctx = finding.get("source_context")
     if not ctx:
@@ -9,11 +11,13 @@ def source_line_text(finding: dict) -> str | None:
     return ctx.get("text")
 
 
-def sorted_surviving_findings(findings: list[dict]) -> list[dict]:
+def sorted_surviving_findings(
+    findings: list[SurvivingMutantFinding],
+) -> list[SurvivingMutantFinding]:
     return sorted(findings, key=_surviving_mutant_sort_key)
 
 
-def _surviving_mutant_sort_key(finding: dict) -> tuple:
+def _surviving_mutant_sort_key(finding: SurvivingMutantFinding) -> tuple:
     return (
         0 if finding["covered"] else 1,
         0 if finding["all_survived"] else 1,
@@ -24,18 +28,18 @@ def _surviving_mutant_sort_key(finding: dict) -> tuple:
     )
 
 
-def coverage_label(finding: dict) -> str:
+def coverage_label(finding: SurvivingMutantFinding) -> str:
     return "Covered" if finding["covered"] else "Uncovered"
 
 
-def mutant_count_label(finding: dict) -> str:
+def mutant_count_label(finding: SurvivingMutantFinding) -> str:
     label = f"{finding['survived']}/{finding['total']} survived"
     if finding["killed"]:
         return f"{finding['killed']} killed, {label}"
     return label
 
 
-def mutator_descriptions(finding: dict) -> str:
+def mutator_descriptions(finding: SurvivingMutantFinding) -> str:
     max_descriptions = 3
     descriptions = []
     for mutant in finding["mutants"]:
@@ -53,7 +57,7 @@ def mutator_descriptions(finding: dict) -> str:
     return ", ".join(visible) + suffix
 
 
-def suggestion_label(finding: dict) -> str:
+def suggestion_label(finding: SurvivingMutantFinding) -> str:
     return (
         finding.get("suggestion") or "Add a test that catches the surviving mutation."
     )

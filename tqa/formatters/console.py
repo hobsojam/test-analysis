@@ -10,7 +10,7 @@ from tqa.formatters.surviving_mutants import (
     suggestion_label,
     sorted_surviving_findings,
 )
-from tqa.models import ProjectReport, ComponentReport
+from tqa.models import ProjectReport, ComponentReport, SurvivingMutantFinding
 
 
 # NOTE: Column structure and thresholds must stay in sync with _component_table() in github.py.
@@ -44,7 +44,7 @@ def _render_component_table(
     console.print(table)
 
 
-def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
+def _render_surviving_mutants(console: Console, findings: list[SurvivingMutantFinding]) -> None:
     if not findings:
         return
 
@@ -82,7 +82,7 @@ def _render_surviving_mutants(console: Console, findings: list[dict]) -> None:
         )
 
 
-def print_summary_table(report: ProjectReport, console: Console | None = None, findings: list[dict] | None = None) -> None:
+def print_summary_table(report: ProjectReport, console: Console | None = None, findings: list[SurvivingMutantFinding] | None = None) -> None:
     if console is None:
         console = Console(legacy_windows=False, width=160)
     multi = len(report.components) > 1 or (
