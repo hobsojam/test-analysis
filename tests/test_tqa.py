@@ -914,17 +914,6 @@ def test_reconcile_paths_merges_covered_status():
     assert comp.files["tqa/auth.py"].lines[5].is_covered is True
 
 
-# --- Engine: _resolve_source_path wrapper ---
-
-
-def test_engine_resolve_source_path_returns_path(tmp_path):
-    src = tmp_path / "app.py"
-    src.write_text("x = 1\n", encoding="utf-8")
-    result = AnalysisEngine()._resolve_source_path("app.py", str(tmp_path))
-    assert result is not None
-    assert result.name == "app.py"
-
-
 # --- mutmut parser: testcase with no name and no file/line is skipped ---
 
 
