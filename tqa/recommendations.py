@@ -1,4 +1,8 @@
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tqa.models import SurvivingMutantFinding
 
 
 FALLBACK_SUGGESTION = (
@@ -42,7 +46,7 @@ _RULES = [
 ]
 
 
-def recommendation_for_finding(finding: dict) -> str:
+def recommendation_for_finding(finding: "SurvivingMutantFinding") -> str:
     """Return deterministic test guidance for a surviving-mutant finding."""
     if not finding.get("covered", False):
         return "Add coverage for this line before strengthening assertions."
@@ -58,14 +62,14 @@ def recommendation_for_finding(finding: dict) -> str:
     return _with_source_focus(FALLBACK_SUGGESTION, finding)
 
 
-def _mutator_descriptions(finding: dict) -> Iterable[str]:
+def _mutator_descriptions(finding: "SurvivingMutantFinding") -> Iterable[str]:
     for mutant in finding.get("mutants", []):
         description = mutant.get("description")
         if description:
             yield description.lower()
 
 
-def _with_source_focus(suggestion: str, finding: dict) -> str:
+def _with_source_focus(suggestion: str, finding: "SurvivingMutantFinding") -> str:
     source_context = finding.get("source_context")
     if not source_context:
         return suggestion

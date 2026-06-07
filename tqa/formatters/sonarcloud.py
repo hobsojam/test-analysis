@@ -9,7 +9,7 @@ from tqa.formatters.surviving_mutants import (
     sorted_surviving_findings,
     suggestion_label,
 )
-from tqa.models import ProjectReport
+from tqa.models import ProjectReport, SurvivingMutantFinding
 
 SONARCLOUD_REPORT_PATH = "sonar-generic-issues.json"
 TQA_ENGINE_ID = "tqa"
@@ -58,7 +58,7 @@ def _surviving_mutant_rule() -> dict[str, Any]:
     }
 
 
-def _issue_for_finding(finding: dict) -> dict[str, Any]:
+def _issue_for_finding(finding: SurvivingMutantFinding) -> dict[str, Any]:
     return {
         "ruleId": SURVIVING_MUTANT_RULE_ID,
         "effortMinutes": _effort_minutes(finding),
@@ -73,11 +73,11 @@ def _issue_for_finding(finding: dict) -> dict[str, Any]:
     }
 
 
-def _effort_minutes(finding: dict) -> int:
+def _effort_minutes(finding: SurvivingMutantFinding) -> int:
     return 20 if finding["all_survived"] else 10
 
 
-def _issue_message(finding: dict) -> str:
+def _issue_message(finding: SurvivingMutantFinding) -> str:
     return (
         f"Surviving mutant: {mutant_count_label(finding)}. "
         f"Mutator: {mutator_descriptions(finding)}. "

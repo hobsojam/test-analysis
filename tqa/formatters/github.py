@@ -95,7 +95,7 @@ def _comp_display_name(name: str) -> str:
     return name.replace("-", " ").replace("_", " ").title()
 
 
-def _source_cell(finding: dict) -> str:
+def _source_cell(finding: SurvivingMutantFinding) -> str:
     """Format source line text as an inline code span, or empty string."""
     text = source_line_text(finding)
     if text is None:
