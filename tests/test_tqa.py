@@ -705,7 +705,7 @@ def test_cli_analyze_with_project_root_flag(tmp_path):
     assert result.exit_code == 0
 
 
-def test_cli_analyze_context_lines_without_project_root_is_ignored():
+def test_cli_analyze_context_lines_without_project_root_warns():
     runner = CliRunner()
     result = runner.invoke(
         main,
@@ -716,6 +716,7 @@ def test_cli_analyze_context_lines_without_project_root_is_ignored():
         ],
     )
     assert result.exit_code == 0
+    assert "--context-lines" in result.output and "--project-root" in result.output
 
 
 # --- Input validation: empty/missing coverage data ---

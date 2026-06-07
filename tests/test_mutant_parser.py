@@ -21,8 +21,8 @@ from tqa.parsers.mutant import (
 # --- _normalize_path ---
 
 
-def test_normalize_path_strips_work_prefix():
-    assert _normalize_path("/work/lib/foo.rb") == "lib/foo.rb"
+def test_normalize_path_leaves_absolute_path_unchanged():
+    assert _normalize_path("/work/lib/foo.rb") == "/work/lib/foo.rb"
 
 
 def test_normalize_path_leaves_plain_path_unchanged():
@@ -342,7 +342,7 @@ def test_parse_mutant_criteria_result_survived_no_flags(tmp_path):
     assert component.files["lib/calc.rb"].lines[10].mutants[0].status == "Survived"
 
 
-def test_parse_mutant_work_prefix_stripped(tmp_path):
+def test_parse_mutant_absolute_path_preserved(tmp_path):
     path = _write_session(
         tmp_path,
         [
@@ -357,8 +357,7 @@ def test_parse_mutant_work_prefix_stripped(tmp_path):
     )
     component = ComponentReport()
     parse_mutant(path, component)
-    assert "lib/foo.rb" in component.files
-    assert "/work/lib/foo.rb" not in component.files
+    assert "/work/lib/foo.rb" in component.files
 
 
 def test_parse_mutant_skips_unparseable_results(tmp_path):
