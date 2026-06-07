@@ -30,7 +30,7 @@ _STATUS_MAP: Dict[str, MutantStatus] = {
 }
 
 
-def normalise_status(raw: str) -> str:
+def normalise_status(raw: str) -> MutantStatus:
     """Map any known status variant (case-insensitive) to its canonical value.
 
     Falls back to MutantStatus.UNKNOWN for unrecognised strings.
@@ -40,7 +40,7 @@ def normalise_status(raw: str) -> str:
 
 class MutantData(BaseModel):
     id: str
-    status: str
+    status: MutantStatus
     line: int
     description: Optional[str] = None
 

@@ -62,10 +62,7 @@ def _session_paths(path: str) -> Iterable[Path]:
 
 
 def _normalize_path(path: str) -> str:
-    normalized = path.replace("\\", "/")
-    if normalized.startswith("/work/"):
-        return normalized.removeprefix("/work/")
-    return normalized
+    return path.replace("\\", "/")
 
 
 def _mutation_results(

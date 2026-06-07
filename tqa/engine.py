@@ -65,7 +65,7 @@ class AnalysisEngine:
         }
 
     @staticmethod
-    def _is_killed(status: str) -> bool:
+    def _is_killed(status: MutantStatus) -> bool:
         return status in (MutantStatus.KILLED, MutantStatus.TIMED_OUT)
 
     def get_surviving_mutants(
@@ -110,16 +110,13 @@ class AnalysisEngine:
         """Return source text around a line, constrained to project_root."""
         return read_source_context(file_path, line_number, project_root, context_lines)
 
-    def get_critical_gaps(self, report: ProjectReport) -> List[dict]:
+    def get_critical_gaps(
+        self, report: ProjectReport, findings: Optional[List[dict]] = None
+    ) -> List[dict]:
         """Identifies covered lines with mutation data but 0% mutation kill rate."""
-        gaps = []
-        for finding in self.get_surviving_mutants(report):
-            if finding["covered"] and finding["all_survived"]:
-                gaps.append(
-                    {
-                        "file": finding["file"],
-                        "line": finding["line"],
-                        "survived": finding["survived"],
-                    }
-                )
-        return gaps
+        source = findings if findings is not None else self.get_surviving_mutants(report)
+        return [
+            {"file": f["file"], "line": f["line"], "survived": f["survived"]}
+            for f in source
+            if f["covered"] and f["all_survived"]
+        ]
