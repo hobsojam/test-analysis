@@ -24,6 +24,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pip-audit>=2.0.0",
+    # Keep mutmut on 2.x: 3.x removed junitxml, which TQA and mutation.yml consume.
     "mutmut>=2.4.0,<3.0.0",
     "mypy>=1.0.0",
     "hypothesis>=6.0.0",
