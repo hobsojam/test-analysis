@@ -46,9 +46,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          pip install --upgrade pip "setuptools>=83.0.0"
           pip install -e .[dev]
-          pip install ruff pip-audit
 
       - name: Lint with Ruff
         run: |

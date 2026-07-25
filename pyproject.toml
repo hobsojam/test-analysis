@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=83.0.0"]  # PYSEC-2026-3447 fixed in 83.0.0
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -28,7 +28,9 @@ dev = [
     "mutmut>=2.4.0,<3.0.0",
     "mypy>=1.0.0",
     "hypothesis>=6.0.0",
-    "ruff>=0.15.0",
+    # Cap below 0.16: it expands the default rule set and flags ~900 pre-existing
+    # findings repo-wide. Bump deliberately once those are triaged/fixed.
+    "ruff>=0.15.0,<0.16.0",
 ]
 
 [project.scripts]
