@@ -25,12 +25,12 @@ dev = [
     "pytest-cov>=4.0.0",
     "pip-audit>=2.0.0",
     # Keep mutmut on 2.x: 3.x removed junitxml, which TQA and mutation.yml consume.
-    "mutmut>=2.4.0,<3.0.0",
+    "mutmut>=2.4.0,<4.0.0",
     "mypy>=1.0.0",
     "hypothesis>=6.0.0",
     # Cap below 0.16: it expands the default rule set and flags ~900 pre-existing
     # findings repo-wide. Bump deliberately once those are triaged/fixed.
-    "ruff>=0.15.0,<0.16.0",
+    "ruff>=0.15.0,<0.17.0",
 ]
 
 [project.scripts]
